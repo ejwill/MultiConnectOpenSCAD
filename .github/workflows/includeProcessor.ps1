@@ -1,6 +1,6 @@
 param (
     [Parameter(Mandatory = $true)]
-    [string]$path  # The input path (file or folder)
+    [string]$path,  # The input path (file or folder)
 
     [Parameter(Mandatory = $false)]
     [string]$sharedFolderPath = "Underware/shared/"  # Default to "Underware/shared/" if not specified
