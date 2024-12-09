@@ -1,6 +1,9 @@
 param (
     [Parameter(Mandatory = $true)]
-    [string]$scadFilePath
+    [string]$path  # The input path (file or folder)
+
+    [Parameter(Mandatory = $false)]
+    [string]$sharedFolderPath = "Underware/shared/"  # Default to "Underware/shared/" if not specified
 )
 
 function Get-Includes {
@@ -32,8 +35,8 @@ function Read-IncludeFiles {
 
     foreach ($includeFile in $includePaths) {
         try {
-            # Make sure to use forward slashes for Linux compatibility
-            $fileContent = Get-Content -Path ("Underware/" + $includeFile) -ErrorAction Stop
+            # Fix the path concatenation using forward slashes for Linux compatibility
+            $fileContent = Get-Content -Path (Join-Path $sharedFolderPath $includeFile) -ErrorAction Stop
             $includeData += $fileContent
         } catch {
             Write-Warning "Could not read file: $includeFile. $_"
@@ -94,20 +97,56 @@ function Append-IncludeData {
     }
 }
 
-# Main Script Logic
-Write-Host "Processing file: $scadFilePath"
+function Process-ScadFile {
+    param (
+        [string]$filePath
+        [string]$sharedFolderPath
+    )
 
-# Step 1: Extract includes
-$includeArray = Get-Includes -filePath $scadFilePath
-Write-Host "Found includes:" $includeArray
+    Write-Host "Processing file: $filePath"
 
-# Step 2: Read include files
-$includeData = Read-IncludeFiles -includePaths $includeArray
-Write-Host "Read include file content."
+    # Step 1: Extract includes from the SCAD file
+    $includeArray = Get-Includes -filePath $filePath
+    Write-Host "Found includes in $filePath: $includeArray"
 
-# Step 3: Remove include lines from the original SCAD file
-Remove-IncludesFromFile -filePath $scadFilePath -includePaths $includeArray
-Write-Host "Removed include lines from $scadFilePath."
+    # Step 2: Read content of the included files
+    $includeData = Read-IncludeFiles -includePaths $includeArray -sharedFolderPath $sharedFolderPath
+    Write-Host "Read include file content for $filePath."
 
-# Step 4: Append include data to the original SCAD file
-Append-IncludeData -filePath $scadFilePath -includeData $includeData
+    # Step 3: Remove the includes from the SCAD file
+    Remove-IncludesFromFile -filePath $filePath -includePaths $includeArray
+    Write-Host "Removed includes from $filePath."
+
+    # Step 4: Append the include data to the SCAD file
+    Append-IncludeData -filePath $filePath -includeData $includeData
+    Write-Host "Appended include data to $filePath."
+}
+
+function Process-ScadFilesInFolder {
+    param (
+        [string]$folderPath
+        [string]$sharedFolderPath
+    )
+
+    # Get all SCAD files in the folder
+    $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse
+
+    foreach ($scadFile in $scadFiles) {
+        Process-ScadFile -filePath $scadFile.FullName -sharedFolderPath $sharedFolderPath
+    }
+}
+
+# Check if the provided path is a file or a folder
+if (Test-Path $path) {
+    if (Test-Path $path -PathType Leaf) {
+        # It's a file, process it
+        Process-ScadFile -filePath $path -sharedFolderPath $sharedFolderPath
+    } elseif (Test-Path $path -PathType Container) {
+        # It's a folder, process all SCAD files in the folder
+        Process-ScadFilesInFolder -folderPath $path -sharedFolderPath $sharedFolderPath
+    } else {
+        Write-Error "The path is neither a valid file nor a folder: $path"
+    }
+} else {
+    Write-Error "The provided path does not exist: $path"
+}
