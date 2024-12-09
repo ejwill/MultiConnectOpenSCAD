@@ -32,7 +32,7 @@ jobs:
 
       # Upload the /underware folder as an artifact
       - name: Upload underware folder
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: underware-artifacts
           path: Underware/

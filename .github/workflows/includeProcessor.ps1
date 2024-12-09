@@ -23,7 +23,6 @@ function Get-Includes {
     return $includeArray
 }
 
-# may need to check includes for includes so a recursive loop
 function Read-IncludeFiles {
     param (
         [string[]]$includePaths
@@ -41,6 +40,31 @@ function Read-IncludeFiles {
     }
 
     return $includeData
+}
+
+function Remove-IncludesFromFile {
+    param (
+        [string]$filePath,
+        [string[]]$includePaths
+    )
+
+    # Read all lines from the SCAD file
+    $lines = Get-Content -Path $filePath
+
+    # Filter out lines that match the includes in $includePaths
+    $filteredLines = $lines | Where-Object {
+        # Match include lines
+        if ($_ -match 'include\s+<([^>]+)>') {
+            $includePath = $matches[1]
+            # Exclude lines that match any path in $includePaths
+            $includePaths -notcontains $includePath
+        } else {
+            $true  # Keep non-include lines
+        }
+    }
+
+    # Overwrite the SCAD file with filtered content
+    Set-Content -Path $filePath -Value $filteredLines
 }
 
 function Append-IncludeData {
@@ -77,5 +101,9 @@ Write-Host "Found includes:" $includeArray
 $includeData = Read-IncludeFiles -includePaths $includeArray
 Write-Host "Read include file content."
 
-# Step 3: Append include data to the original file
+# Step 3: Remove include lines from the original SCAD file
+Remove-IncludesFromFile -filePath $scadFilePath -includePaths $includeArray
+Write-Host "Removed include lines from $scadFilePath."
+
+# Step 4: Append include data to the original SCAD file
 Append-IncludeData -filePath $scadFilePath -includeData $includeData
