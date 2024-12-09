@@ -108,7 +108,7 @@ function Process-ScadFile {
 
     # Step 1: Extract includes from the SCAD file
     $includeArray = Get-Includes -filePath $filePath
-    Write-Host "Found includes in $filePath: $includeArray"
+    Write-Host "Found includes in $filePath: $($includeArray -join ', ')"
 
     # Step 2: Read content of the included files
     $includeData = Read-IncludeFiles -includePaths $includeArray -sharedFolderPath $sharedFolderPath
@@ -122,6 +122,7 @@ function Process-ScadFile {
     Append-IncludeData -filePath $filePath -includeData $includeData
     Write-Host "Appended include data to $filePath."
 }
+
 
 function Process-ScadFilesInFolder {
     param (
