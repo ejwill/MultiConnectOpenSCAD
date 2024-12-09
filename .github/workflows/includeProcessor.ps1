@@ -32,7 +32,8 @@ function Read-IncludeFiles {
 
     foreach ($includeFile in $includePaths) {
         try {
-            $fileContent = Get-Content -Path $includeFile -ErrorAction Stop
+            # this assumes that the place to look for shared code is in Underware\folder
+            $fileContent = Get-Content -Path "Underware\" + $includeFile -ErrorAction Stop
             $includeData += $fileContent
         } catch {
             Write-Warning "Could not read file: $includeFile. $_"
