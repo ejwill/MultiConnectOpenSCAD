@@ -28,7 +28,8 @@ function Get-Includes {
 
 function Read-IncludeFiles {
     param (
-        [string[]]$includePaths
+        [string[]]$includePaths,
+        [string]$sharedFolderPath
     )
 
     $includeData = @()
@@ -99,7 +100,7 @@ function Append-IncludeData {
 
 function Process-ScadFile {
     param (
-        [string]$filePath
+        [string]$filePath,
         [string]$sharedFolderPath
     )
 
@@ -124,7 +125,7 @@ function Process-ScadFile {
 
 function Process-ScadFilesInFolder {
     param (
-        [string]$folderPath
+        [string]$folderPath,
         [string]$sharedFolderPath
     )
 
