@@ -28,7 +28,7 @@ jobs:
       - name: Process Includes
         shell: pwsh
         run: |
-          pwsh ./.github/workflows/includeProcessor.ps1 -scadFilePath "Underware"
+          pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware"
 
       # Upload the /underware folder as an artifact
       - name: Upload underware folder
