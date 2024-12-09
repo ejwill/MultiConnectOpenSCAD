@@ -17,6 +17,12 @@ jobs:
     steps:
       # Checkout the repository
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full repository content is fetched
+
+      # Debug: List repository contents
+      - name: List repository contents
+        run: ls -R
 
       # Run the include processor script
       - name: Process Includes
