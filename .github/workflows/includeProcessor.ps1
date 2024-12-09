@@ -48,16 +48,19 @@ function Remove-IncludesFromFile {
         [string[]]$includePaths
     )
 
+    # Normalize paths in $includePaths to avoid case sensitivity issues
+    $normalizedIncludePaths = $includePaths | ForEach-Object { $_.ToLowerInvariant() }
+
     # Read all lines from the SCAD file
     $lines = Get-Content -Path $filePath
 
-    # Filter out lines that match the includes in $includePaths
+    # Filter out lines that match the normalized include paths
     $filteredLines = $lines | Where-Object {
         # Match include lines
         if ($_ -match 'include\s+<([^>]+)>') {
-            $includePath = $matches[1]
-            # Exclude lines that match any path in $includePaths
-            $includePaths -notcontains $includePath
+            $includePath = $matches[1].ToLowerInvariant()
+            # Exclude lines that match any normalized path
+            $normalizedIncludePaths -notcontains $includePath
         } else {
             $true  # Keep non-include lines
         }
