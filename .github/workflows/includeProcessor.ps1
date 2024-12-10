@@ -96,6 +96,12 @@ function Remove-IncludesFromFile {
         [string[]]$includePaths
     )
 
+    # Check if includePaths is not null or empty before proceeding
+    if ($null -eq $includePaths -or $includePaths.Count -eq 0) {
+        Write-Warning "No include paths provided for $filePath. Skipping removal of includes."
+        return (Get-Content -Path $filePath)  # Return the original file content if no includes
+    }
+
     $normalizedIncludePaths = $includePaths | ForEach-Object { $_.ToLowerInvariant() }
 
     $lines = Get-Content -Path $filePath
@@ -110,6 +116,7 @@ function Remove-IncludesFromFile {
 
     return $filteredLines
 }
+
 
 function Write-ToProcessedFile {
     param (
