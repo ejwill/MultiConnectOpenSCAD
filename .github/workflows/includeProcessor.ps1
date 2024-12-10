@@ -6,6 +6,7 @@ param (
     [string]$sharedFolderPath = "Underware/shared/"  # Default to "Underware/shared/" if not specified
 )
 
+# Function to extract include statements from a SCAD file
 function Get-Includes {
     param (
         [string]$filePath
@@ -13,7 +14,7 @@ function Get-Includes {
 
     $includeArray = @()
 
-    # Read the file line by line and extract includes
+    # Read the file line by line and extract include statements
     Get-Content -Path $filePath | ForEach-Object {
         if ($_ -match 'include\s+<([^>]+)>') {
             $includePath = $matches[1]
@@ -26,6 +27,7 @@ function Get-Includes {
     return $includeArray
 }
 
+# Function to read the content of include files
 function Read-IncludeFiles {
     param (
         [string[]]$includePaths,
@@ -36,8 +38,9 @@ function Read-IncludeFiles {
 
     foreach ($includeFile in $includePaths) {
         try {
-            # Fix the path concatenation using forward slashes for Linux compatibility
-            $fileContent = Get-Content -Path (Join-Path $sharedFolderPath $includeFile) -ErrorAction Stop
+            # Join shared folder path and include file name
+            $filePath = Join-Path -Path $sharedFolderPath -ChildPath $includeFile
+            $fileContent = Get-Content -Path $filePath -ErrorAction Stop
             $includeData += $fileContent
         } catch {
             Write-Warning "Could not read file: $includeFile. $_"
@@ -47,24 +50,21 @@ function Read-IncludeFiles {
     return $includeData
 }
 
+# Function to remove include statements from the SCAD file
 function Remove-IncludesFromFile {
     param (
         [string]$filePath,
         [string[]]$includePaths
     )
 
-    # Normalize paths in $includePaths to avoid case sensitivity issues
+    # Normalize include paths to avoid case sensitivity issues
     $normalizedIncludePaths = $includePaths | ForEach-Object { $_.ToLowerInvariant() }
 
-    # Read all lines from the SCAD file
+    # Filter out include lines matching the include paths
     $lines = Get-Content -Path $filePath
-
-    # Filter out lines that match the normalized include paths
     $filteredLines = $lines | Where-Object {
-        # Match include lines
         if ($_ -match 'include\s+<([^>]+)>') {
             $includePath = $matches[1].ToLowerInvariant()
-            # Exclude lines that match any normalized path
             $normalizedIncludePaths -notcontains $includePath
         } else {
             $true  # Keep non-include lines
@@ -75,6 +75,7 @@ function Remove-IncludesFromFile {
     Set-Content -Path $filePath -Value $filteredLines
 }
 
+# Function to append include data to the SCAD file
 function Append-IncludeData {
     param (
         [string]$filePath,
@@ -82,15 +83,8 @@ function Append-IncludeData {
     )
 
     try {
-        # Write a separator line
         Add-Content -Path $filePath -Value "`n// Appended Includes Start"
-
-        # Append each item in includeData
-        foreach ($fileContent in $includeData) {
-            Add-Content -Path $filePath -Value $fileContent
-        }
-
-        # Write a closing separator
+        Add-Content -Path $filePath -Value $includeData
         Add-Content -Path $filePath -Value "// Appended Includes End`n"
         Write-Host "Successfully appended included file content to $filePath."
     } catch {
@@ -98,6 +92,7 @@ function Append-IncludeData {
     }
 }
 
+# Function to process a single SCAD file
 function Process-ScadFile {
     param (
         [string]$filePath,
@@ -106,44 +101,37 @@ function Process-ScadFile {
 
     Write-Host "Processing file: $filePath"
 
-    # Step 1: Extract includes from the SCAD file
     $includeArray = Get-Includes -filePath $filePath
-    Write-Host "Found includes in $($filePath): $($includeArray -join ', ')"
+    Write-Host "Found includes in $filePath: $($includeArray -join ', ')"
 
-    # Step 2: Read content of the included files
     $includeData = Read-IncludeFiles -includePaths $includeArray -sharedFolderPath $sharedFolderPath
     Write-Host "Read include file content for $filePath."
 
-    # Step 3: Remove the includes from the SCAD file
     Remove-IncludesFromFile -filePath $filePath -includePaths $includeArray
     Write-Host "Removed includes from $filePath."
 
-    # Step 4: Append the include data to the SCAD file
     Append-IncludeData -filePath $filePath -includeData $includeData
     Write-Host "Appended include data to $filePath."
 }
 
+# Function to process all SCAD files in a folder
 function Process-ScadFilesInFolder {
     param (
         [string]$folderPath,
         [string]$sharedFolderPath
     )
 
-    # Get all SCAD files in the folder
     $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse
-
     foreach ($scadFile in $scadFiles) {
         Process-ScadFile -filePath $scadFile.FullName -sharedFolderPath $sharedFolderPath
     }
 }
 
-# Check if the provided path is a file or a folder
+# Main execution block
 if (Test-Path $path) {
     if (Test-Path $path -PathType Leaf) {
-        # It's a file, process it
         Process-ScadFile -filePath $path -sharedFolderPath $sharedFolderPath
     } elseif (Test-Path $path -PathType Container) {
-        # It's a folder, process all SCAD files in the folder
         Process-ScadFilesInFolder -folderPath $path -sharedFolderPath $sharedFolderPath
     } else {
         Write-Error "The path is neither a valid file nor a folder: $path"
