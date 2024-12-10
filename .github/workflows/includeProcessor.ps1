@@ -129,9 +129,9 @@ function Write-ToProcessedFile {
     try {
         # Write filtered content and appended include data to the new file
         Set-Content -Path $outputFilePath -Value $filteredLines
-        Add-Content -Path $outputFilePath -Value "`n// Appended Includes Start"
+        Add-Content -Path $outputFilePath -Value "`n// === Appended Includes Start ==="
         Add-Content -Path $outputFilePath -Value $includeData
-        Add-Content -Path $outputFilePath -Value "// Appended Includes End`n"
+        Add-Content -Path $outputFilePath -Value "// === Appended Includes End ===`n"
         Write-Host "Successfully wrote processed file to $outputFilePath."
     } catch {
         Write-Error "Failed to write processed file: $outputFilePath. $_"
@@ -161,7 +161,7 @@ function Process-ScadFile {
 
     # Step 1: Extract includes from the SCAD file
     $includeArray = Get-Includes -filePath $filePath
-    Write-Host "Found includes in $filePath: $($includeArray -join ', ')"
+    Write-Host "Found includes in $($filePath): $($includeArray -join ', ')"
 
     # Step 2: Read content of the included files
     $includeData = Read-IncludeFiles -includePaths $includeArray -sharedFolderPath $sharedFolderPath
