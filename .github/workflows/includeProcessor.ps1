@@ -35,7 +35,7 @@ param (
     [string]$path,  # The input path (file or folder)
 
     [Parameter(Mandatory = $false)]
-    [string]$sharedFolderPath = "Underware/shared/",  # Default to "Underware/shared/" if not specified
+    [string]$sharedFolderPath = "/shared/",  # Default to "Underware/shared/" if not specified
 
     [Parameter(Mandatory = $false)]
     [string]$processedFolderPath # Default to "processed" folder
@@ -179,7 +179,7 @@ function Process-ScadFile {
 
     # Step 1: Extract includes from the SCAD file
     $includeArray = Get-Includes -filePath $filePath
-    Write-Host "Found includes in $filePath: $($includeArray -join ', ')"
+    Write-Host "Found includes in $($filePath): $($includeArray -join ', ')"
 
     # Step 2: Read content of the included files
     $includeData = Read-IncludeFiles -includePaths $includeArray -sharedFolderPath $sharedFolderPath
