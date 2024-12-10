@@ -38,7 +38,7 @@ param (
     [string]$sharedFolderPath = "Underware/shared/",  # Default to "Underware/shared/" if not specified
 
     [Parameter(Mandatory = $false)]
-    [string]$processedFolderPath = "processed"  # Default to "processed" folder
+    [string]$processedFolderPath # Default to "processed" folder
 )
 
 # Explanation for `processedFolderPath`:
@@ -124,7 +124,19 @@ function Write-ToProcessedFile {
         New-Item -ItemType Directory -Path $processedFolderPath | Out-Null
     }
 
-    $outputFilePath = Join-Path -Path $processedFolderPath -ChildPath (Split-Path -Leaf $originalFilePath)
+    # Get the directory of the original file
+    $originalDirectory = Split-Path -Parent $originalFilePath
+
+    # Determine the processed directory relative to the original directory
+    $relativeProcessedPath = Join-Path -Path $originalDirectory -ChildPath $processedFolderPath
+
+    # Ensure the processed directory exists
+    if (-not (Test-Path -Path $relativeProcessedPath)) {
+        New-Item -Path $relativeProcessedPath -ItemType Directory -Force | Out-Null
+    }
+
+    # Determine the output file path
+    $outputFilePath = Join-Path -Path $relativeProcessedPath -ChildPath (Split-Path -Leaf $originalFilePath)
 
     try {
         # Write filtered content and appended include data to the new file
@@ -145,30 +157,36 @@ function Process-ScadFile {
         [string]$processedFolderPath
     )
 
+    # If processedFolderPath is not provided, create it relative to the original file's folder
+    if (-not $processedFolderPath) {
+        $originalDirectory = Split-Path -Parent $filePath
+        $processedFolderPath = Join-Path -Path $originalDirectory -ChildPath 'processed'
+    }
+
     # Ensure the processed folder exists
     if (-not (Test-Path -Path $processedFolderPath)) {
-        New-Item -Path $processedFolderPath -ItemType Directory | Out-Null
+        New-Item -Path $processedFolderPath -ItemType Directory -Force | Out-Null
         Write-Host "Created processed folder: $processedFolderPath"
     }
 
     # Extract the file name from the file path
     $fileName = [System.IO.Path]::GetFileName($filePath)
 
-    # Construct the output file path
+    # Construct the output file path for the processed file
     $outputFilePath = Join-Path -Path $processedFolderPath -ChildPath $fileName
 
     Write-Host "Processing file: $filePath"
 
     # Step 1: Extract includes from the SCAD file
     $includeArray = Get-Includes -filePath $filePath
-    Write-Host "Found includes in $($filePath): $($includeArray -join ', ')"
+    Write-Host "Found includes in $filePath: $($includeArray -join ', ')"
 
     # Step 2: Read content of the included files
     $includeData = Read-IncludeFiles -includePaths $includeArray -sharedFolderPath $sharedFolderPath
     Write-Host "Read include file content for $filePath."
 
     # Step 3: Write the processed content to the new file
-    Write-ToProcessedFile -originalFilePath $filePath -outputFilePath $outputFilePath -includeData $includeData -processedFolderPath $processedFolderPath
+    Write-ToProcessedFile -originalFilePath $filePath -filteredLines (Remove-IncludesFromFile -filePath $filePath -includePaths $includeArray) -includeData $includeData -processedFolderPath $processedFolderPath
 }
 
 
