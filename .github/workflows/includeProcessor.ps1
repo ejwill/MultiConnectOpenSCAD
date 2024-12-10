@@ -168,7 +168,7 @@ function Process-ScadFile {
     Write-Host "Read include file content for $filePath."
 
     # Step 3: Write the processed content to the new file
-    Write-ToProcessedFile -originalFilePath $filePath -outputFilePath $outputFilePath -includeData $includeData
+    Write-ToProcessedFile -originalFilePath $filePath -outputFilePath $outputFilePath -includeData $includeData -processedFolderPath $processedFolderPath
 }
 
 
