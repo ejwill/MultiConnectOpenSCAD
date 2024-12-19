@@ -152,8 +152,10 @@ function Write-ToProcessedFile {
         Add-Content -Path $outputFilePath -Value $includeData
         Add-Content -Path $outputFilePath -Value "// === Appended Includes End ===`n"
         Write-Host "Successfully wrote processed file to $outputFilePath."
+        Write-Host ""
     } catch {
         Write-Error "Failed to write processed file: $outputFilePath. $_"
+        Write-Host ""
     }
 }
 
