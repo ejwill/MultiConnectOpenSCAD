@@ -25,14 +25,20 @@ jobs:
         run: ls -R
 
       # Run the include processor script
-      - name: Process Includes
+      # - name: Process Includes
+      #   shell: pwsh
+      #   run: |
+      #     pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware" -sharedFolderPath "Underware/shared/"
+
+      # Run the include processor script
+      - name: Process Includes v2
         shell: pwsh
         run: |
-          pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware" -sharedFolderPath "Underware/shared/"
+          pwsh ./.github/workflows/scripts/includeProcessor-v2.ps1 -path "Underware"
 
       # Upload the /underware folder as an artifact
       - name: Upload underware folder
         uses: actions/upload-artifact@v4
         with:
           name: underware-artifacts
-          path: Underware/processed
+          path: Underware/output
