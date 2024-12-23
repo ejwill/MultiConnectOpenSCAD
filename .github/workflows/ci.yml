@@ -1,0 +1,44 @@
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure full repository content is fetched
+
+      # Debug: List repository contents
+      - name: List repository contents
+        run: ls -R
+
+      # Run the include processor script
+      # - name: Process Includes
+      #   shell: pwsh
+      #   run: |
+      #     pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware" -sharedFolderPath "Underware/shared/"
+
+      # Run the include processor script
+      - name: Process Includes v2
+        shell: pwsh
+        run: |
+          pwsh ./.github/workflows/scripts/includeProcessor-v2.ps1 -path "Underware"
+
+      # Upload the /underware folder as an artifact
+      - name: Upload underware folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: underware-artifacts
+          path: Underware/output

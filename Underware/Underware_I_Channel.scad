@@ -39,7 +39,7 @@ Wood_Screw_Head_Height = 1.75;
 
 /*[Channel Size]*/
 //width of channel in units (default unit is 25mm)
-Channel_Width_in_Units = 1;
+Channel_Width_in_Units = 1;  // Ensure this is an integer
 //height inside the channel (in mm)
 Channel_Internal_Height = 12; //[12:6:72]
 //length of channel in units (default unit is 25mm)
@@ -75,9 +75,11 @@ surname_font = str(Font , ":style=", Font_Style);
 Grid_Size = 25;
 //Color of part (color names found at https://en.wikipedia.org/wiki/Web_colors)
 Global_Color = "SlateBlue";
+//0 to use Channel_Width_in_Units, otherwise use this value as internal width in MM
+Override_Width_Using_Internal_MM = 0; 
 
 /*[Hidden]*/
-channelWidth = Channel_Width_in_Units * Grid_Size;
+channelWidth = Override_Width_Using_Internal_MM == 0 ? Channel_Width_in_Units * Grid_Size : Override_Width_Using_Internal_MM + 6;
 baseHeight = 9.63;
 topHeight = 10.968;
 interlockOverlap = 3.09; //distance that the top and base overlap each other
@@ -108,10 +110,6 @@ Base_Screw_Hole_Outer_Diameter = 15;
 Base_Screw_Hole_Inner_Depth = 1;
 Base_Screw_Hole_Cone = false;
 
-//Part Size Calculations
-straight_channel_Y = Grid_Size * Channel_Length_Units;
-
-
 if(Base_Top_or_Both != "Top")
 color_this(Global_Color)
         left(Show_Attached ? 0 : channelWidth/2)
@@ -137,7 +135,7 @@ module straightChannelBase(lengthMM, widthMM, anchor, spin, orient){
         fwd(lengthMM/2) down(maxY(baseProfileHalf)/2)
         diff("holes")
         zrot(90) path_sweep(baseProfile(widthMM = widthMM), turtle(["xmove", lengthMM]))
-        tag("holes")  right(lengthMM/2) grid_copies(spacing=Grid_Size, inside=rect([lengthMM-1,widthMM-1])) 
+        tag("holes")  right(lengthMM/2) grid_copies(spacing=Grid_Size, inside=rect([lengthMM-1,Grid_Size*Channel_Width_in_Units-1])) 
             if(Mounting_Method == "Direct Multiboard Screw") up(Base_Screw_Hole_Inner_Depth) cyl(h=8, d=Base_Screw_Hole_Inner_Diameter, $fn=25, anchor=TOP) attach(TOP, BOT, overlap=0.01) cyl(h=3.5-Base_Screw_Hole_Inner_Depth+0.02, d1=Base_Screw_Hole_Cone ? Base_Screw_Hole_Inner_Diameter : Base_Screw_Hole_Outer_Diameter, d2=Base_Screw_Hole_Outer_Diameter, $fn=25);
             else if(Mounting_Method == "Magnet") up(Magnet_Thickness+Magnet_Tolerance-0.01) cyl(h=Magnet_Thickness+Magnet_Tolerance, d=Magnet_Diameter+Magnet_Tolerance, $fn=50, anchor=TOP);
             else if(Mounting_Method == "Wood Screw") up(3.5 - Wood_Screw_Head_Height) cyl(h=3.5 - Wood_Screw_Head_Height+0.05, d=Wood_Screw_Thread_Diameter, $fn=25, anchor=TOP)
@@ -157,11 +155,11 @@ module straightChannelTop(lengthMM, widthMM, heightMM = 12, anchor, spin, orient
             tag("Cable_Cutouts") down(5+0.01) up(10.968/2 + (heightMM - 12)/2) right(lengthMM/2)
                 xcopies(n=Number_of_Cord_Cutouts, spacing= Distance_Between_Cutouts) 
                     up(2.49)
-                    fwd(Cord_Side_Cutouts == "Left Side" ? channelWidth/2 :
-                        Cord_Side_Cutouts == "Right Side" ? -channelWidth/2 : 
+                    fwd(Cord_Side_Cutouts == "Left Side" ? widthMM/2 :
+                        Cord_Side_Cutouts == "Right Side" ? -widthMM/2 : 
                         0)
                     left(-Shift_Cutouts_Forward_or_Back)
-                        cuboid([Cord_Cutout_Width, Cord_Side_Cutouts == "Both Sides" ? channelWidth + 5 : channelWidth/2, Channel_Internal_Height-2], chamfer = 2, edges=[TOP+LEFT, TOP+RIGHT]);
+                        cuboid([Cord_Cutout_Width, Cord_Side_Cutouts == "Both Sides" ? widthMM + 5 : widthMM/2, Channel_Internal_Height-2], chamfer = 2, edges=[TOP+LEFT, TOP+RIGHT]);
     children();
     }
 }
