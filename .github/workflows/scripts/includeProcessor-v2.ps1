@@ -182,7 +182,7 @@ function Write-ToProcessedFile {
     )
 
     # Ensure the processed folder exists
-    Ensure-FolderExists -folderPath $outputFolderPath
+    Test-FolderExists -folderPath $outputFolderPath
 
     # Determine the output file path
     $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath (Split-Path -Leaf $originalFilePath)
@@ -199,7 +199,7 @@ function Write-ToProcessedFile {
     }
 }
 
-function Ensure-FolderExists {
+function Test-FolderExists {
     param (
         [string]$folderPath
     )
@@ -226,11 +226,13 @@ function Invoke-ProcessScadFile {
         Write-Host "Created processed folder: $outputFolderPath"
     }
 
-    # Extract the file name from the file path
-    $fileName = [System.IO.Path]::GetFileName($filePath)
+    # # Extract the file name from the file path
+    # $fileName = [System.IO.Path]::GetFileName($filePath)
 
-    # Construct the output file path for the processed file
-    $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $fileName
+    # # Construct the output file path for the processed file
+    # $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $fileName
+
+    $linesToRemove = Remove-IncludesFromFile -filePath $filePath -includePaths $includeArray
 
     Write-Host "Processing file: $filePath"
 
@@ -239,11 +241,11 @@ function Invoke-ProcessScadFile {
     Write-Host "Found includes in $($filePath): $($includeArray -join ', ')"
 
     # Step 2: Read content of the included files
-    $includeData = Read-IncludeFiles -includePaths $includeArray
+    $includeData = Read-IncludeFiles -includePaths $includeArray -scadFilePath $filePath
     Write-Host "Read include file content for $filePath."
 
     # Step 3: Write the processed content to the new file
-    Write-ToProcessedFile -originalFilePath $filePath -filteredLines (Remove-IncludesFromFile -filePath $filePath -includePaths $includeArray) -includeData $includeData -outputFolderPath $outputFolderPath
+    Write-ToProcessedFile -originalFilePath $filePath -filteredLines $linesToRemove -includeData $includeData -outputFolderPath $outputFolderPath
 }
 
 function Invoke-ProcessScadFilesInFolder {
