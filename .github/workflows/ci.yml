@@ -50,27 +50,6 @@ jobs:
             echo "$file was changed"
           done
 
-      # turn the changed files into an array
-      # - name: Set changed files array
-      #   id: set-changed-files-array
-      #   run: |
-      #     echo "::set-output name=underware_all_changed_files::$(echo ${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }} | tr '\n' ' ')"
-      #     echo "::set-output name=underware_any_changed::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | wc -l)"
-
-      # - name: Set changed files array
-      #   id: set-changed-files-array
-      #   shell: pwsh
-      #   run: |
-      #     $changedFiles = "${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }}"
-      #     $filesArray = if ([string]::IsNullOrWhiteSpace($changedFiles)) { 
-      #       @() 
-      #     } else { 
-      #       $changedFiles.Split(',').Trim() 
-      #     }
-      #     $filesArrayString = $filesArray -join ','
-      #     Write-Output "::set-output name=underware_all_changed_files::$filesArrayString"
-      #     Write-Host "Changed files: $($filesArray.Count)"
-
       # Run the include processor script
       - name: Process SCAD
         id: process-scad
@@ -80,6 +59,7 @@ jobs:
         shell: pwsh
         run: |
             $pathArray = $env:UNDERWARE_ALL_CHANGED_FILES.Split(',')
+            Write-Host "Processing SCAD files: $pathArray"
             pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray $pathArray
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
