@@ -47,7 +47,7 @@ jobs:
           UNDERWARE_ALL_CHANGED_FILES: ${{ steps.changed-files-yaml.outputs.underware_all_changed_files }}
         shell: pwsh
         run: |
-          pwsh ./.github/workflows/scripts/scad/scad-include-processor -path $TEST_ALL_CHANGED_FILES
+          pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -path $TEST_ALL_CHANGED_FILES
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
       - name: Upload underware folder
