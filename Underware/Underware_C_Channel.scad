@@ -144,3 +144,5 @@ module curvedChannelTop(radiusMM, widthMM, heightMM = 12, anchor, spin, orient){
         children();
     }
 }
+
+//ejw

@@ -40,21 +40,35 @@ jobs:
               - Underware/**
 
       # turn the changed files into an array
+      # - name: Set changed files array
+      #   id: set-changed-files-array
+      #   run: |
+      #     echo "::set-output name=underware_all_changed_files::$(echo ${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }} | tr '\n' ' ')"
+      #     echo "::set-output name=underware_any_changed::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | wc -l)"
+
       - name: Set changed files array
         id: set-changed-files-array
+        shell: pwsh
         run: |
-          echo "::set-output name=underware_all_changed_files::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | tr '\n' ' ')"
-          echo "::set-output name=underware_any_changed::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | wc -l)"
+          $changedFiles = "${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }}"
+          $filesArray = if ([string]::IsNullOrWhiteSpace($changedFiles)) { 
+            @() 
+          } else { 
+            $changedFiles.Split(',').Trim() 
+          }
+          $filesArrayString = $filesArray -join ','
+          Write-Output "::set-output name=underware_all_changed_files::$filesArrayString"
+          Write-Host "Changed files: $($filesArray.Count)"
 
       # Run the include processor script
       - name: Process SCAD
         id: process-scad
         if: steps.changed-files-yaml.outputs.underware_any_changed == 'true'
         env:
-          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files-array.underware_all_changed_files }}
+          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files-array.outputs.underware_all_changed_files }}
         shell: pwsh
         run: |
-            pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray $env:UNDERWARE_ALL_CHANGED_FILES
+            pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray ${UNDERWARE_ALL_CHANGED_FILES}
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
       - name: Upload underware folder
