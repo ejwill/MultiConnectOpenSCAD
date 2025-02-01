@@ -31,7 +31,7 @@ jobs:
       #     pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware" -sharedFolderPath "Underware/shared/"
 
       # Get the files that have been changed in the PR
-      - name: Get all test, doc and src files that have changed
+      - name: Get changed files
         id: changed-files-yaml
         uses: tj-actions/changed-files@v45
         with:
@@ -39,15 +39,22 @@ jobs:
             underware:
               - Underware/**
 
+      # turn the changed files into an array
+      - name: Set changed files array
+        id: set-changed-files-array
+        run: |
+          echo "::set-output name=underware_all_changed_files::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | tr '\n' ' ')"
+          echo "::set-output name=underware_any_changed::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | wc -l)"
+
       # Run the include processor script
       - name: Process SCAD
         id: process-scad
         if: steps.changed-files-yaml.outputs.underware_any_changed == 'true'
         env:
-          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.changed-files-yaml.outputs.underware_all_changed_files }}
+          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files-array.underware_all_changed_files }}
         shell: pwsh
         run: |
-          pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -path $TEST_ALL_CHANGED_FILES
+            pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray $env:UNDERWARE_ALL_CHANGED_FILES
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
       - name: Upload underware folder
