@@ -79,7 +79,8 @@ jobs:
           UNDERWARE_ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         shell: pwsh
         run: |
-            pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray ${UNDERWARE_ALL_CHANGED_FILES}
+            $pathArray = $env:UNDERWARE_ALL_CHANGED_FILES.Split(',')
+            pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray pathArray
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
       - name: Upload underware folder
