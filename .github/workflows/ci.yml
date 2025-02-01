@@ -35,9 +35,20 @@ jobs:
         id: changed-files-yaml
         uses: tj-actions/changed-files@v45
         with:
-          files_yaml: |
-            underware:
-              - Underware/**
+          files: '**/*.scad'
+          separator: ','
+          # files_yaml: |
+          #   underware:
+          #     - Underware/**
+
+      - name: List all changed files
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          echo ${ALL_CHANGED_FILES}
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+          done
 
       # turn the changed files into an array
       # - name: Set changed files array
@@ -46,19 +57,19 @@ jobs:
       #     echo "::set-output name=underware_all_changed_files::$(echo ${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }} | tr '\n' ' ')"
       #     echo "::set-output name=underware_any_changed::$(echo ${{ steps.changed-files-yaml.outputs.underware }} | wc -l)"
 
-      - name: Set changed files array
-        id: set-changed-files-array
-        shell: pwsh
-        run: |
-          $changedFiles = "${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }}"
-          $filesArray = if ([string]::IsNullOrWhiteSpace($changedFiles)) { 
-            @() 
-          } else { 
-            $changedFiles.Split(',').Trim() 
-          }
-          $filesArrayString = $filesArray -join ','
-          Write-Output "::set-output name=underware_all_changed_files::$filesArrayString"
-          Write-Host "Changed files: $($filesArray.Count)"
+      # - name: Set changed files array
+      #   id: set-changed-files-array
+      #   shell: pwsh
+      #   run: |
+      #     $changedFiles = "${{ steps.changed-files-yaml.outputs.underware.underware_all_changed_files }}"
+      #     $filesArray = if ([string]::IsNullOrWhiteSpace($changedFiles)) { 
+      #       @() 
+      #     } else { 
+      #       $changedFiles.Split(',').Trim() 
+      #     }
+      #     $filesArrayString = $filesArray -join ','
+      #     Write-Output "::set-output name=underware_all_changed_files::$filesArrayString"
+      #     Write-Host "Changed files: $($filesArray.Count)"
 
       # Run the include processor script
       - name: Process SCAD
