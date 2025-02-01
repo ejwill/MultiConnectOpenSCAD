@@ -32,7 +32,7 @@ jobs:
 
       # Get the files that have been changed in the PR
       - name: Get changed files
-        id: changed-files-yaml
+        id: changed-files
         uses: tj-actions/changed-files@v45
         with:
           # files: '**/*.scad'
@@ -74,9 +74,9 @@ jobs:
       # Run the include processor script
       - name: Process SCAD
         id: process-scad
-        if: steps.changed-files-yaml.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true'
         env:
-          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files-array.outputs.all_changed_files }}
+          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files.outputs.all_changed_files }}
         shell: pwsh
         run: |
             pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray ${UNDERWARE_ALL_CHANGED_FILES}
