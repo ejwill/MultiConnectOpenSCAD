@@ -35,7 +35,7 @@ jobs:
         id: changed-files-yaml
         uses: tj-actions/changed-files@v45
         with:
-          files: '**/*.scad'
+          # files: '**/*.scad'
           separator: ','
           # files_yaml: |
           #   underware:
@@ -74,9 +74,9 @@ jobs:
       # Run the include processor script
       - name: Process SCAD
         id: process-scad
-        if: steps.changed-files-yaml.outputs.underware_any_changed == 'true'
+        if: steps.changed-files-yaml.outputs.any_changed == 'true'
         env:
-          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files-array.outputs.underware_all_changed_files }}
+          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.set-changed-files-array.outputs.all_changed_files }}
         shell: pwsh
         run: |
             pwsh ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray ${UNDERWARE_ALL_CHANGED_FILES}
