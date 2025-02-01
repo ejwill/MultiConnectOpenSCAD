@@ -92,7 +92,6 @@ function New-ScadFile {
     # Remove the include line from the content of the ScadFile where the include was found only if the include has content
     foreach ($include in $includeFiles) {
         if ($include.Content) {
-            # $newContent = $newContent -replace "include\s*<${include.Name}>", ""
             $pattern = "include\s+<($($include.Name -join '|'))>\s*(\r?\n|\r)?"
 
             # Remove matches while preserving line endings
@@ -231,7 +230,9 @@ function Test-FolderExists {
 
 # Main script logic
 # Check if the path is a file or a folder
+Write-Host "Processing Files: $pathArray"
 foreach ($path in $pathArray) {
+    Write-Host "Processing file: $path"
     if (Test-Path $path) {
         if (Test-Path $path -PathType Leaf) {
             Invoke-ProcessScadFile -filePath $path -outputFolderPath $outputFolderPath
