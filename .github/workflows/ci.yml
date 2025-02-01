@@ -3,8 +3,8 @@ name: CI
 # Controls when the workflow will run
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
-  push:
-    branches: [ "main" ]
+  # push:
+  #   branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   
@@ -30,15 +30,29 @@ jobs:
       #   run: |
       #     pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware" -sharedFolderPath "Underware/shared/"
 
+      # Get the files that have been changed in the PR
+      - name: Get all test, doc and src files that have changed
+        id: changed-files-yaml
+        uses: tj-actions/changed-files@v45
+        with:
+          files_yaml: |
+            underware:
+              - Underware/**
+
       # Run the include processor script
-      - name: Process Includes v2
+      - name: Process SCAD
+        id: process-scad
+        if: steps.changed-files-yaml.outputs.underware_any_changed == 'true'
+        env:
+          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.changed-files-yaml.outputs.underware_all_changed_files }}
         shell: pwsh
         run: |
-          pwsh ./.github/workflows/scripts/includeProcessor-v2.ps1 -path "Underware"
+          pwsh ./.github/workflows/scripts/scad/scad-include-processor -path $TEST_ALL_CHANGED_FILES
 
-      # Upload the /underware folder as an artifact
+      # Upload the /underware folder as an artifact. Run only if process-scad has run
       - name: Upload underware folder
         uses: actions/upload-artifact@v4
+        if: steps.process-scad.outcome == 'success'
         with:
           name: underware-artifacts
           path: Underware/output

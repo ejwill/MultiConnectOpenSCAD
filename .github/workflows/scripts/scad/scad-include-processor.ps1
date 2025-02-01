@@ -1,6 +1,6 @@
 param (
     [Parameter(Mandatory = $true)]
-    [string]$path,  # The input path (file or folder)
+    [string[]]$pathArray,  # The input path (file or folder)
 
     [Parameter(Mandatory = $false)]
     [string]$outputFolderPath # Default to "output" folder in the same directory as the input file
@@ -215,7 +215,7 @@ function Get-Includes-From-ScadFile {
             $includeArray += $includeName
         }
     }
-    
+
     Write-Verbose "Total includes found: $($includeArray.Count)"
     return $includeArray
 }
@@ -229,16 +229,20 @@ function Test-FolderExists {
     }
 }
 
-if (Test-Path $path) {
-    if (Test-Path $path -PathType Leaf) {
-        Invoke-ProcessScadFile -filePath $path -outputFolderPath $outputFolderPath
-    } elseif (Test-Path $path -PathType Container) {
-        Invoke-ProcessScadFilesInFolder -folderPath $path -outputFolderPath $outputFolderPath
+# Main script logic
+# Check if the path is a file or a folder
+foreach ($path in $pathArray) {
+    if (Test-Path $path) {
+        if (Test-Path $path -PathType Leaf) {
+            Invoke-ProcessScadFile -filePath $path -outputFolderPath $outputFolderPath
+        } elseif (Test-Path $path -PathType Container) {
+            Invoke-ProcessScadFilesInFolder -folderPath $path -outputFolderPath $outputFolderPath
+        } else {
+            Write-Warning "The path is neither a valid file nor a folder: $path"
+        }
     } else {
-        Write-Error "The path is neither a valid file nor a folder: $path"
+        Write-Warning "The provided path does not exist: $path"
     }
-} else {
-    Write-Error "The provided path does not exist: $path"
 }
 
 class ScadFile {
