@@ -67,7 +67,7 @@ cuboid([Item_Width_MM + Bridge_Wall_Thickness_MM*2, Bridge_Width_MM, Bridge_Wall
                 //        mask2d_roundover(h=3,mask_angle=$edge_angle);
                 cuboid([calculatedHoleOffsetFromEdge()+Base_Screw_Hole_Inner_Diameter/2+2, Bridge_Width_MM, 3], anchor=BOT, rounding=4, edges=[FRONT+RIGHT, BACK+RIGHT]){
                     //screw cutouts
-                    #attach(TOP, BOT, inside=true, shiftout=0.01, align=LEFT, inset=-1*Base_Screw_Hole_Inner_Diameter/2+calculatedHoleOffsetFromEdge()) cyl(r=Base_Screw_Hole_Inner_Diameter/2, h=3.1, $fn=25);
+                    attach(TOP, BOT, inside=true, shiftout=0.01, align=LEFT, inset=-1*Base_Screw_Hole_Inner_Diameter/2+calculatedHoleOffsetFromEdge()) cyl(r=Base_Screw_Hole_Inner_Diameter/2, h=3.1, $fn=25);
                     //down(-1*Base_Screw_Hole_Inner_Diameter/2+calculatedHoleOffsetFromEdge())attach(TOP, FRONT, inside=true, shiftout=0.01) cyl(r=Base_Screw_Hole_Inner_Diameter/2, h=3.1, $fn=25);
                 };
     tag("remove")

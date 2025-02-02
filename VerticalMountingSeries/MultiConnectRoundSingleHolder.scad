@@ -3,15 +3,23 @@ Credit to @David D on Printables and Jonathan at Keep Making for Multiconnect an
 Licensed Creative Commons 4.0 Attribution Non-Commercial Sharable with Attribution
 */
 
-/* [Standard Parameters] */
-hookWidth = 25;
-hookInternalDepth = 25;
-hookLipHeight = 4;
-
-/*[Additional Customization]*/
-hookLipThickness = 3;
-hookBottomThickness = 5;
-backHeight = 35;
+/*[Parameters]*/
+//diameter (in mm) of the item you wish to insert (this becomes the internal diameter)
+itemDiameter = 50; //0.1
+//thickness (in mm) of the wall surrounding the item
+rimThickness = 1;
+//Thickness (in mm) of the base underneath the item you are holding
+baseThickness = 3;
+//Additional thickness of the area between the item holding and the backer.
+shelfSupportHeight = 3;
+//Additional height (in mm) of the rim protruding upward to hold the item
+rimHeight = 10;
+//Additional Backer Height (in mm) in case you prefer additional support for something heavy
+additionalBackerHeight = 0;
+//Offset the holding position from the back wall
+offSet = 0;
+//Use cutout for holding items that are wider at the top
+useCutout = false;
 
 /*[Slot Customization]*/
 //Distance between Multiconnect slots on the back (25mm is standard for MultiBoard)
@@ -31,19 +39,39 @@ onRampEveryXSlots = 1;
 
 
 /*[Hidden]*/
-backWidth = max(distanceBetweenSlots,hookWidth);
+totalWidth = itemDiameter + rimThickness*2;
+totalHeight = max(baseThickness+shelfSupportHeight+0.25*itemDiameter,25);
 
-//Hook
-union(){
-    //back
-    translate(v = [-backWidth/2,0,0]) 
-        multiconnectBack(backWidth = backWidth, backHeight = backHeight, distanceBetweenSlots = distanceBetweenSlots);
-    //hook base
-    translate(v = [-hookWidth/2,0,0]) 
-        cube(size = [hookWidth,hookInternalDepth+hookLipThickness,hookBottomThickness]);
-    //hook lip
-    translate(v = [-hookWidth/2,hookInternalDepth,0]) 
-        cube(size = [hookWidth,hookLipThickness,hookLipHeight+hookBottomThickness]);
+//start build
+translate(v = [-max(totalWidth,distanceBetweenSlots)/2,0,0]) 
+    multiconnectBack(backWidth = totalWidth, backHeight = totalHeight+additionalBackerHeight, distanceBetweenSlots = distanceBetweenSlots);
+    //item holder
+translate(v = [-totalWidth/2,0,0]) 
+union() {
+    difference() {
+        //itemwalls
+        union() {
+            hull(){
+                translate(v = [totalWidth/2,itemDiameter/2+offSet,0]) 
+                    //outer circle
+                    linear_extrude(height = shelfSupportHeight+baseThickness) 
+                            circle(r = itemDiameter/2+rimThickness, $fn=50);
+                    //wide back for hull operation
+                    linear_extrude(height = shelfSupportHeight+baseThickness) 
+                            square(size = [totalWidth,1]);
+                }
+            //thin holding wall
+            translate(v = [totalWidth/2,itemDiameter/2+offSet,shelfSupportHeight+baseThickness]) 
+                linear_extrude(height = rimHeight) 
+                    circle(r = itemDiameter/2+rimThickness, $fn=50);
+        }
+        //itemDiameter (i.e., delete tool)
+        translate(v = [totalWidth/2,(itemDiameter/2)+offSet,baseThickness+.5 - (useCutout?+(baseThickness*2)+1:0)]) linear_extrude(height = shelfSupportHeight+rimHeight+1+(useCutout?+(baseThickness*2):0)) circle(r = itemDiameter/2, $fn=50);
+    }
+    //brackets
+    bracketSize = min(totalHeight-baseThickness-shelfSupportHeight, itemDiameter/2);
+    translate(v = [rimThickness,0,bracketSize+baseThickness+shelfSupportHeight]) shelfBracket(bracketHeight = bracketSize, bracketDepth = bracketSize, rimThickness = rimThickness);
+    translate(v = [rimThickness*2+itemDiameter,0,bracketSize+baseThickness+shelfSupportHeight]) shelfBracket(bracketHeight = bracketSize, bracketDepth = bracketSize, rimThickness = rimThickness);
 }
 
 //BEGIN MODULES
@@ -99,4 +127,10 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
                         polygon(points = [[0,0],[0,1.5],[1.5,0]]);
         }
     }
+}
+
+module shelfBracket(bracketHeight, bracketDepth, rimThickness){
+        rotate(a = [-90,0,90]) 
+            linear_extrude(height = rimThickness) 
+                polygon([[0,0],[0,bracketHeight],[bracketDepth,bracketHeight]]);
 }

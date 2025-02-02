@@ -1,21 +1,29 @@
 /*Created by Andy Levesque
 Credit to @David D on Printables and Jonathan at Keep Making for Multiconnect and Multiboard, respectively
 Licensed Creative Commons 4.0 Attribution Non-Commercial Sharable with Attribution
+
+Change Log:
+- 2024-09-18 
+    - Initial release
+2025-01-20
+    - Added rounded edges to the top of the hook (thanks @deTTriTTus!)
+
 */
 
-/*[Parameters]*/
-//diameter (in mm) of the item you wish to insert (this becomes the internal diameter)
-itemDiameter = 50; //0.1
-//thickness (in mm) of the wall surrounding the item
-rimThickness = 1;
-//Thickness (in mm) of the base underneath the item you are holding
-baseThickness = 3;
-//Additional thickness of the area between the item holding and the backer.
-shelfSupportHeight = 3;
-//Additional height (in mm) of the rim protruding upward to hold the item
-rimHeight = 10;
-//Additional Backer Height (in mm) in case you prefer additional support for something heavy
-additionalBackerHeight = 0;
+include <BOSL2/std.scad>
+
+/* [Standard Parameters] */
+hookWidth = 25;
+hookInternalDepth = 25;
+hookLipHeight = 4;
+
+/*[Additional Customization]*/
+hookLipThickness = 3;
+hookBottomThickness = 5;
+backHeight = 35;
+hookRadius = 2;
+backRadius = 2;
+
 
 /*[Slot Customization]*/
 //Distance between Multiconnect slots on the back (25mm is standard for MultiBoard)
@@ -35,39 +43,20 @@ onRampEveryXSlots = 1;
 
 
 /*[Hidden]*/
-totalWidth = itemDiameter + rimThickness*2;
-totalHeight = max(baseThickness+shelfSupportHeight+0.25*itemDiameter,25);
+backWidth = max(distanceBetweenSlots,hookWidth);
+subDivTopEdges=66;
 
-//start build
-translate(v = [-max(totalWidth,distanceBetweenSlots)/2,0,0]) 
-    multiconnectBack(backWidth = totalWidth, backHeight = totalHeight+additionalBackerHeight, distanceBetweenSlots = distanceBetweenSlots);
-    //item holder
-translate(v = [-totalWidth/2,0,0]) 
-union() {
-    difference() {
-        //itemwalls
-        union() {
-            hull(){
-                translate(v = [totalWidth/2,itemDiameter/2,0]) 
-                    //outer circle
-                    linear_extrude(height = shelfSupportHeight+baseThickness) 
-                            circle(r = itemDiameter/2+rimThickness, $fn=50);
-                    //wide back for hull operation
-                    linear_extrude(height = shelfSupportHeight+baseThickness) 
-                            square(size = [totalWidth,1]);
-                }
-            //thin holding wall
-            translate(v = [totalWidth/2,itemDiameter/2,shelfSupportHeight+baseThickness]) 
-                linear_extrude(height = rimHeight) 
-                    circle(r = itemDiameter/2+rimThickness, $fn=50);
-        }
-        //itemDiameter (i.e., delete tool)
-        translate(v = [totalWidth/2,itemDiameter/2,baseThickness]) linear_extrude(height = shelfSupportHeight+rimHeight+1) circle(r = itemDiameter/2, $fn=50);
-    }
-    //brackets
-    bracketSize = min(totalHeight-baseThickness-shelfSupportHeight, itemDiameter/2);
-    translate(v = [rimThickness,0,bracketSize+baseThickness+shelfSupportHeight]) shelfBracket(bracketHeight = bracketSize, bracketDepth = bracketSize, rimThickness = rimThickness);
-    translate(v = [rimThickness*2+itemDiameter,0,bracketSize+baseThickness+shelfSupportHeight]) shelfBracket(bracketHeight = bracketSize, bracketDepth = bracketSize, rimThickness = rimThickness);
+//Hook
+union(){
+    //back
+    translate(v = [-backWidth/2,0,0]) 
+        multiconnectBack(backWidth = backWidth, backHeight = backHeight, distanceBetweenSlots = distanceBetweenSlots);
+    //hook base
+    translate(v = [-hookWidth/2,0,0]) 
+        topRoundedCube(size = [hookWidth,hookInternalDepth+hookLipThickness,hookBottomThickness], r = hookRadius);
+    //hook lip
+    translate(v = [-hookWidth/2,hookInternalDepth,0]) 
+        topRoundedCube(size = [hookWidth,hookLipThickness,hookLipHeight+hookBottomThickness], r = hookRadius);
 }
 
 //BEGIN MODULES
@@ -78,7 +67,7 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
     //slot width needs to be at least the distance between slot for at least 1 slot to generate
     let (backWidth = max(backWidth,distanceBetweenSlots), backHeight = max(backHeight, 25),slotCount = floor(backWidth/distanceBetweenSlots), backThickness = 6.5){
         difference() {
-            translate(v = [0,-backThickness,0]) cube(size = [backWidth,backThickness,backHeight]);
+            translate(v = [0,-backThickness,0]) topRoundedCube(size = [backWidth,backThickness,backHeight], r = backRadius);
             //Loop through slots and center on the item
             //Note: I kept doing math until it looked right. It's possible this can be simplified.
             for (slotNum = [0:1:slotCount-1]) {
@@ -125,8 +114,9 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
     }
 }
 
-module shelfBracket(bracketHeight, bracketDepth, rimThickness){
-        rotate(a = [-90,0,90]) 
-            linear_extrude(height = rimThickness) 
-                polygon([[0,0],[0,bracketHeight],[bracketDepth,bracketHeight]]);
+module topRoundedCube(size, r) {
+    diff()
+        cube(size = size)
+            edge_mask([TOP+LEFT, TOP+RIGHT])
+            rounding_edge_mask(l=size[1],r=r,$fn=subDivTopEdges);
 }

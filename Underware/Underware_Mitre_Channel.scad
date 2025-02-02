@@ -10,6 +10,14 @@ Credit to
     @cosmicdust on MakerWorld and @freakadings_1408562 on Printables for the idea of diagonals (forward and turn)
     @siyrahfall+1155967 on Printables for the idea of top exit holes
     @Lyric on Printables for the flush connector idea
+    @fawix on GitHub for her contributions on parameter descriptors
+
+Release Notes
+    - 2024-12-06 
+        - Initial Release
+    2024-12-28
+        - Added internal mitre corner
+        - Fixed bug with top length calculation
 
 */
 
@@ -18,12 +26,13 @@ include <BOSL2/rounding.scad>
 include <BOSL2/threading.scad>
 
 /*[Channel Size]*/
-//width of channel in units (default unit is 25mm)
+//Width (Y axis) of channel in units. Default unit is 25mm
 Channel_Width_in_Units = 1;
-//height inside the channel (in mm)
+//Height inside the channel (in mm). Z axis for top channel and X axis bottom channel.
 Channel_Internal_Height = 12; //[12:6:72]
-//Length (in mm) the longest edge of one top channel. This should be the distance of where the channel starts to the wall or corner.
+//Length (X axis) in mm of the top channel. This should be the distance of where the channel starts to the wall or corner.
 Length_of_Longest_Edge_1 = 75;
+//Length (Z axis) in mm of the bottom channel. This should be the distance of where the channel starts to the wall or corner.
 Length_of_Longest_Edge_2 = 75;
 
 /*[Advanced Options]*/
@@ -48,16 +57,29 @@ Channel_Length_Units = 6;
 
 */
 
+//inside mitre channel
 color_this(Global_Color) 
     left(3)
-    half_of(UP+LEFT, s=Channel_Length_Units*Grid_Size*2+10)
-        path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_1*2-50+14.032*2- (Channel_Internal_Height-12)*2]), anchor=TOP, orient=BOT);
+    half_of(UP+LEFT, s=Channel_Length_Units*Grid_Size*2)
+        path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_1*2-10.968*2-(Channel_Internal_Height-12)*2]), anchor=TOP, orient=BOT);
 
     color_this(Global_Color) 
         down(3)yrot(-90) xrot(180)
-            half_of(UP+LEFT, s=Channel_Length_Units*Grid_Size*2+10)
-            path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_2+14.032*2+14 - (Channel_Internal_Height-12)*2]), anchor=TOP, orient=BOT);
+            half_of(UP+LEFT, s=Channel_Length_Units*Grid_Size*2)
+            path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_2*2-10.968*2-(Channel_Internal_Height-12)*2]), anchor=TOP, orient=BOT);
 
+//outside mitre channel
+color_this(Global_Color)
+back(30)zrot(180) {
+half_of(DOWN+RIGHT, s=Channel_Length_Units*Grid_Size*2)
+    path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_1*2]), anchor=TOP, orient=BOT);
+
+color_this(Global_Color)
+up(5)
+rot([180,-90,0])
+    half_of(DOWN+RIGHT, s=Channel_Length_Units*Grid_Size*2)
+    path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_2*2]), anchor=TOP, orient=BOT);
+}
 
 //BEGIN PROFILES - Must match across all files
 

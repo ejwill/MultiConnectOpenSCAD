@@ -8,6 +8,8 @@ Change Log:
     - Initial release
 - 2024-12-09
     - Fix to threading of snap connector by adding flare and new slop parameter
+- 2024-12-29
+    - New branch channel
 
 Credit to 
     First and foremost - Katie and her community at Hands on Katie on Youtube, Patreon, and Discord
@@ -28,18 +30,23 @@ include <BOSL2/threading.scad>
 Base_Top_or_Both = "Both"; // [Base, Top, Both]
 
 /*[Channel Shape]*/
-//Width of channel in units (default unit is 25mm)
-Channel_Width_in_Units = 1;
+//Width of straight channel in units (default unit is 25mm)
+Straight_Channel_Width_in_Units = 1;
+//Distance of straight section of channel (in units)
+Straight_Section_Length_in_Units = 4;
+//Width of branchg channel in units (default unit is 25mm)
+Branch_Channel_Width_in_Units = 1;
 //Height (Z axis) inside the channel (in mm)
 Channel_Internal_Height = 12; //[12:6:72]
 //Grid units to move over (X axis). Both sides will move over and away from the center by this amount
-Y_Units_Over = 1; //[1:1:10]
+Branch_Units_Out = 1; //[1:1:10]
 //Grid units to move up (Y axis)
-Y_Units_Up = 1;//[1:1:10]
-//Channel bifurcation ends with same direction when set to Forward or at 90 degrees angle if set to Turn
-Y_Output_Direction = "Forward"; //[Forward, Turn]
-//Straight distance on all 3 edges of the bifurcation. Unexpected behavior on wider channels may be resolved by changing this slider
-Y_Straight_Distance = 12.5; //[12.5:12.5:100]
+Branch_Units_Up = 1;//[1:1:10]
+//Grid units to move up (Y axis)
+Branch_Units_Extra_Length = 0;//[0:1:10]
+
+
+
 
 /*[Mounting Options]*/
 //How do you intend to mount the channels to a surface such as Honeycomb Storage Wall or Multiboard? See options at https://handsonkatie.com/underware-2-0-the-made-to-measure-collection/
@@ -66,12 +73,18 @@ Global_Color = "SlateBlue";
 Slop = 0.075;
 
 /*[Hidden]*/
-channelWidth = Channel_Width_in_Units * Grid_Size;
+channelWidth = Straight_Channel_Width_in_Units * Grid_Size;
 baseHeight = 9.63;
 topHeight = 10.968;
 interlockOverlap = 3.09; //distance that the top and base overlap each other
 interlockFromFloor = 6.533; //distance from the bottom of the base to the bottom of the top when interlocked
 partSeparation = 10;
+
+//Disabling until further work
+//Channel bifurcation ends with same direction when set to Forward or at 90 degrees angle if set to Turn
+Y_Output_Direction = "Forward"; //[Forward, Turn]
+//Straight distance on all 3 edges of the bifurcation. Unexpected behavior on wider channels may be resolved by changing this slider
+Y_Straight_Distance = 12.5; //[12.5:12.5:100]
 
 ///*[Visual Options]*/
 Debug_Show_Grid = false;
@@ -107,11 +120,14 @@ Base_Screw_Hole_Cone = false;
 
 if(Base_Top_or_Both != "Top")
     color_this(Global_Color)
-        left(partSeparation/2) yChannelBase(widthMM = channelWidth, unitsOver = Y_Units_Over, unitsUp = Y_Units_Up, outputDirection = Y_Output_Direction, straightDistance = Y_Straight_Distance, anchor=BOT+RIGHT);
+        back(Straight_Section_Length_in_Units*Grid_Size/2)
+            branchSplitChannelBase(widthMM = channelWidth, unitsOver = Branch_Units_Out, unitsUp = Branch_Units_Up, outputDirection = Y_Output_Direction, straightDistance = Y_Straight_Distance, anchor=BOT);
 
 if(Base_Top_or_Both != "Base")
     color_this(Global_Color)
-        right(partSeparation/2) yChannelTop(widthMM = channelWidth, unitsOver = Y_Units_Over, unitsUp = Y_Units_Up, heightMM = Channel_Internal_Height, outputDirection = Y_Output_Direction, straightDistance = Y_Straight_Distance, anchor=TOP+RIGHT, orient=BOT);
+        fwd(Straight_Section_Length_in_Units*Grid_Size/2)
+        zrot(180)            
+            yChannelTop(widthMM = channelWidth, unitsOver = Branch_Units_Out, unitsUp = Branch_Units_Up, heightMM = Channel_Internal_Height, outputDirection = Y_Output_Direction, straightDistance = Y_Straight_Distance, anchor=TOP+RIGHT, orient=BOT);
 
 
 /*
@@ -120,73 +136,90 @@ if(Base_Top_or_Both != "Base")
 
 */
 
-//Y-ChannelS
-module yChannelBase(unitsOver = 1, unitsUp=3, outputDirection = "Forward", straightDistance = Grid_Size, widthMM, anchor, spin, orient){
+module mountPoint(style = "Threaded Snap Connector"){
+    if(Mounting_Method == "Direct Multiboard Screw") up(Base_Screw_Hole_Inner_Depth) cyl(h=8, d=Base_Screw_Hole_Inner_Diameter, $fn=25, anchor=TOP) attach(TOP, BOT, overlap=0.01) cyl(h=3, d=Base_Screw_Hole_Outer_Diameter, $fn=25);
+    else if(Mounting_Method == "Magnet") up(Magnet_Thickness+Magnet_Tolerance-0.01) cyl(h=Magnet_Thickness+Magnet_Tolerance, d=Magnet_Diameter+Magnet_Tolerance, $fn=50, anchor=TOP);
+    else if(Mounting_Method == "Wood Screw") up(3.5 - Wood_Screw_Head_Height) cyl(h=3.5 - Wood_Screw_Head_Height+0.05, d=Wood_Screw_Thread_Diameter, $fn=25, anchor=TOP)
+        //wood screw head
+        attach(TOP, BOT, overlap=0.01) cyl(h=Wood_Screw_Head_Height+0.05, d1=Wood_Screw_Thread_Diameter, d2=Wood_Screw_Head_Diameter, $fn=25);
+    else if(Mounting_Method == "Flat") ; //do nothing
+    //Default is Threaded Snap Connector
+    else up(5.99) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=6, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, internal=true, bevel2 = true, blunt_start=false, anchor=TOP, $slop=Slop);
+}
+
+//Branch Split Channel Base
+module branchSplitChannelBase(unitsOver = 1, unitsUp=3, outputDirection = "Forward", straightDistance = Grid_Size, widthMM, anchor, spin, orient){
     attachable(anchor, spin, orient, size=[unitsOver*Grid_Size*2+channelWidth,unitsUp*Grid_Size+straightDistance*2, baseHeight]){
+        
+        endPositionX = unitsOver * Grid_Size * Straight_Channel_Width_in_Units / 2 + Branch_Channel_Width_in_Units * Grid_Size/2;
+        endPositionY = unitsUp*Grid_Size+Grid_Size+(Branch_Channel_Width_in_Units*Grid_Size-Grid_Size)+Branch_Units_Extra_Length*Grid_Size;
         fwd(unitsUp*Grid_Size/2+straightDistance)
         down(baseHeight/2)
-            diff("holes"){
-                xflip_copy() 
+            diff("holes channel_clear"){
+                 //straight section
+                 path_sweep(baseProfile(widthMM = widthMM), turtle(["ymove", Straight_Section_Length_in_Units*Grid_Size]));
+                 //straight section clear
+                 tag("channel_clear") fwd(0.01)path_sweep(baseDeleteProfile(widthMM = widthMM), turtle(["ymove", Straight_Section_Length_in_Units*Grid_Size+0.02]));
+                 
                 {
+                    //branch channel
                     right_half(s=max(unitsUp*Grid_Size*4,unitsOver*Grid_Size*4)) {//s should be a number larger than twice the size of the object's largest axis. Thew some random numbers in here for now. If mirror issues surface, this is likely the culprit. 
-                        path_sweep2d(baseProfile(widthMM = widthMM), 
+                        path_sweep2d(baseProfile(widthMM = Branch_Channel_Width_in_Units*Grid_Size), 
                             path= outputDirection == "Forward" ? [
                                 [0,0], //start
-                                [0,straightDistance*sign(unitsUp)+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
-                                [unitsOver*Grid_Size,unitsUp*Grid_Size+Grid_Size*sign(unitsUp)-straightDistance*sign(unitsUp)-0.1], //movement to position before last straight
-                                [unitsOver*Grid_Size,unitsUp*Grid_Size+Grid_Size*sign(unitsUp)] //last position either out the angle or straight out
+                                [0,straightDistance+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
+                                [endPositionX, endPositionY-straightDistance-Branch_Units_Extra_Length*Grid_Size+0.1], //movement to position before last straight
+                                [endPositionX, endPositionY] //last position either out the angle or straight out
                             ] :
                             [ //90 degree path
                                 [0,0], //start
                                 [0,straightDistance*sign(unitsUp)+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
-                                [unitsOver*Grid_Size+Grid_Size/2*sign(unitsOver)-straightDistance*sign(unitsOver),unitsUp*Grid_Size+Grid_Size/2*sign(unitsUp)], //movement to position before last straight
-                                [unitsOver*Grid_Size+Grid_Size/2*sign(unitsOver),unitsUp*Grid_Size+Grid_Size/2*sign(unitsUp)] //last position either out the angle or straight out
+                                [unitsOver * Grid_Size + Grid_Size / 2 - straightDistance, unitsUp * Grid_Size + Grid_Size / 2], //movement to position before last straight
+                                [unitsOver*Grid_Size+Grid_Size/2,unitsUp*Grid_Size+Grid_Size/2] //last position either out the angle or straight out
+                            ]
+                            );
+                    }
+                    //branch channel clear
+                    tag("channel_clear")
+                        right_half(s=max(unitsUp*Grid_Size*4,unitsOver*Grid_Size*4)) {//s should be a number larger than twice the size of the object's largest axis. Thew some random numbers in here for now. If mirror issues surface, this is likely the culprit. 
+                        path_sweep2d(baseDeleteProfile(widthMM = Branch_Channel_Width_in_Units*Grid_Size), 
+                            path= outputDirection == "Forward" ? [
+                                [0,-0.01], //start
+                                [0,straightDistance+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
+                                [endPositionX, endPositionY-straightDistance-Branch_Units_Extra_Length*Grid_Size], //movement to position before last straight
+                                [endPositionX, endPositionY] //last position either out the angle or straight out
+                            ] :
+                            [ //90 degree path
+                                [0,0], //start
+                                [0,straightDistance*sign(unitsUp)+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
+                                [unitsOver*Grid_Size+Grid_Size/2-straightDistance,unitsUp*Grid_Size+Grid_Size/2], //movement to position before last straight
+                                [unitsOver*Grid_Size+Grid_Size/2,unitsUp*Grid_Size+Grid_Size/2] //last position either out the angle or straight out
                             ]
                             );
                     }}
-                            tag("holes") xcopies(spacing = Grid_Size, n = Channel_Width_in_Units) back(Grid_Size/2*sign(unitsUp)) down(0.01) 
-                                if(Mounting_Method == "Direct Multiboard Screw") up(Base_Screw_Hole_Inner_Depth) cyl(h=8, d=Base_Screw_Hole_Inner_Diameter, $fn=25, anchor=TOP) attach(TOP, BOT, overlap=0.01) cyl(h=3, d=Base_Screw_Hole_Outer_Diameter, $fn=25);
-                                else if(Mounting_Method == "Magnet") up(Magnet_Thickness+Magnet_Tolerance-0.01) cyl(h=Magnet_Thickness+Magnet_Tolerance, d=Magnet_Diameter+Magnet_Tolerance, $fn=50, anchor=TOP);
-                                else if(Mounting_Method == "Wood Screw") up(3.5 - Wood_Screw_Head_Height) cyl(h=3.5 - Wood_Screw_Head_Height+0.05, d=Wood_Screw_Thread_Diameter, $fn=25, anchor=TOP)
-                                    //wood screw head
-                                    attach(TOP, BOT, overlap=0.01) cyl(h=Wood_Screw_Head_Height+0.05, d1=Wood_Screw_Thread_Diameter, d2=Wood_Screw_Head_Diameter, $fn=25);
-                                else if(Mounting_Method == "Flat") ; //do nothing
-                                //Default is Threaded Snap Connector
-                                else up(5.99) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=6, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, internal=true, bevel2 = true, blunt_start=false, anchor=TOP, $slop=Slop);
+                            //straight section holes
+                            tag("holes") back(Grid_Size*Straight_Section_Length_in_Units*sign(unitsUp)/2)  grid_copies(spacing=Grid_Size, inside=rect([Grid_Size*Straight_Channel_Width_in_Units-1,Straight_Section_Length_in_Units*Grid_Size-1]))  down(0.01) 
+                            mountPoint(Mounting_Method);
                             //outside holes forward option (right side)
                             tag("holes") 
                                 if(outputDirection == "Forward")
                                     move_copies([
-                                        [unitsOver*Grid_Size, unitsUp*Grid_Size+Grid_Size*sign(unitsUp)-Grid_Size/2*sign(unitsUp),-0.01],//right side
-                                        [unitsOver*Grid_Size*-1, unitsUp*Grid_Size+Grid_Size*sign(unitsUp)-Grid_Size/2*sign(unitsUp),-0.01]
+                                        [endPositionX, endPositionY-Grid_Size/2,-0.01],//right side
+                                        [endPositionX*-1, endPositionY-Grid_Size/2,-0.01]
                                         ])
-                                        xcopies(spacing = Grid_Size, n = Channel_Width_in_Units) //back(Units_Up*Grid_Size+Grid_Size*sign(unitsUp)-Grid_Size/2*sign(unitsUp)) //right(unitsOver*Grid_Size)down(0.01) 
-                                    if(Mounting_Method == "Direct Multiboard Screw") up(Base_Screw_Hole_Inner_Depth) cyl(h=8, d=Base_Screw_Hole_Inner_Diameter, $fn=25, anchor=TOP) attach(TOP, BOT, overlap=0.01) cyl(h=3, d=Base_Screw_Hole_Outer_Diameter, $fn=25);
-                                    else if(Mounting_Method == "Magnet") up(Magnet_Thickness+Magnet_Tolerance-0.01) cyl(h=Magnet_Thickness+Magnet_Tolerance, d=Magnet_Diameter+Magnet_Tolerance, $fn=50, anchor=TOP);
-                                    else if(Mounting_Method == "Wood Screw") up(3.5 - Wood_Screw_Head_Height) cyl(h=3.5 - Wood_Screw_Head_Height+0.05, d=Wood_Screw_Thread_Diameter, $fn=25, anchor=TOP)
-                                        //wood screw head
-                                        attach(TOP, BOT, overlap=0.01) cyl(h=Wood_Screw_Head_Height+0.05, d1=Wood_Screw_Thread_Diameter, d2=Wood_Screw_Head_Diameter, $fn=25);
-                                    else if(Mounting_Method == "Flat") ; //do nothing
-                                    //Default is Threaded Snap Connector
-                                    else up(5.99) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=6, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, internal=true, bevel2 = true, blunt_start=false, anchor=TOP, $slop=Slop);
-                            //outside holes turn option
+                                        xcopies(spacing = Grid_Size, n = Branch_Channel_Width_in_Units) //back(Units_Up*Grid_Size+Grid_Size*sign(unitsUp)-Grid_Size/2*sign(unitsUp)) //right(unitsOver*Grid_Size)down(0.01) 
+                                            mountPoint(Mounting_Method);
+                            //outside holes turn option 
                             tag("holes") 
                                 if(outputDirection == "Turn") 
                                     move_copies([
                                         [unitsOver*Grid_Size,unitsUp*Grid_Size+Grid_Size/2*sign(unitsUp),-0.01],
                                         [-unitsOver*Grid_Size,unitsUp*Grid_Size+Grid_Size/2*sign(unitsUp),-0.01]
                                         ])
-                                        ycopies(spacing = Grid_Size, n = Channel_Width_in_Units)// back(Units_Up*Grid_Size+Grid_Size/2*sign(unitsUp)) //right(unitsOver*Grid_Size)down(0.01) 
-                                if(Mounting_Method == "Direct Multiboard Screw") up(Base_Screw_Hole_Inner_Depth) cyl(h=8, d=Base_Screw_Hole_Inner_Diameter, $fn=25, anchor=TOP) attach(TOP, BOT, overlap=0.01) cyl(h=3, d=Base_Screw_Hole_Outer_Diameter, $fn=25);
-                                else if(Mounting_Method == "Magnet") up(Magnet_Thickness+Magnet_Tolerance-0.01) cyl(h=Magnet_Thickness+Magnet_Tolerance, d=Magnet_Diameter+Magnet_Tolerance, $fn=50, anchor=TOP);
-                                else if(Mounting_Method == "Wood Screw") up(3.5 - Wood_Screw_Head_Height) cyl(h=3.5 - Wood_Screw_Head_Height+0.05, d=Wood_Screw_Thread_Diameter, $fn=25, anchor=TOP)
-                                    //wood screw head
-                                    attach(TOP, BOT, overlap=0.01) cyl(h=Wood_Screw_Head_Height+0.05, d1=Wood_Screw_Thread_Diameter, d2=Wood_Screw_Head_Diameter, $fn=25);
-                                else if(Mounting_Method == "Flat") ; //do nothing
-                                //Default is Threaded Snap Connector
-                                else up(5.99) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=6, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, internal=true, bevel2 = true, blunt_start=false, anchor=TOP, $slop=Slop);
+                                        ycopies(spacing = Grid_Size, n = Straight_Channel_Width_in_Units)// back(Units_Up*Grid_Size+Grid_Size/2*sign(unitsUp)) //right(unitsOver*Grid_Size)down(0.01) 
+                                            mountPoint(Mounting_Method);
             if(Debug_Show_Grid)
-                #back(12.5) back(12.5*Channel_Width_in_Units-12.5) grid_copies(spacing=Grid_Size, inside=rect([200,200]))cyl(h=8, d=7, $fn=25);//temporary 
+                #back(12.5) back(12.5*Straight_Channel_Width_in_Units-12.5) grid_copies(spacing=Grid_Size, inside=rect([200,200]))cyl(h=8, d=7, $fn=25);//temporary 
             }
         children();
     }
@@ -194,27 +227,55 @@ module yChannelBase(unitsOver = 1, unitsUp=3, outputDirection = "Forward", strai
 
 module yChannelTop(unitsOver = 1, unitsUp=3, heightMM = 12, outputDirection = "Forward", straightDistance = Grid_Size, widthMM, anchor, spin, orient){
     attachable(anchor, spin, orient, size=[unitsOver*Grid_Size*2+channelWidth,unitsUp*Grid_Size+straightDistance*2, topHeight + (heightMM-12)]){
+        endPositionX = unitsOver * Grid_Size * Straight_Channel_Width_in_Units / 2 + Branch_Channel_Width_in_Units * Grid_Size/2;
+        endPositionY = unitsUp*Grid_Size+Grid_Size+(Branch_Channel_Width_in_Units*Grid_Size-Grid_Size)+Branch_Units_Extra_Length*Grid_Size;
+
         fwd(unitsUp*Grid_Size/2+straightDistance)
         down((topHeight + (heightMM-12))/2)
-            diff("holes"){
-                xflip_copy() 
+            diff("holes channel_clear"){
+                //straight section
+                path_sweep(topProfile(widthMM = widthMM), turtle(["ymove", Straight_Section_Length_in_Units*Grid_Size]));
+                //straight section clear
+                tag("channel_clear") fwd(0.01)path_sweep(topDeleteProfile(widthMM = widthMM), turtle(["ymove", Straight_Section_Length_in_Units*Grid_Size+0.02]));
                 {
+                    //branch channel
                     right_half(s=max(unitsUp*Grid_Size*4,unitsOver*Grid_Size*4)) {//s should be a number larger than twice the size of the object's largest axis. Thew some random numbers in here for now. If mirror issues surface, this is likely the culprit. 
-                        path_sweep2d(topProfile(widthMM = widthMM, heightMM = heightMM), 
+                        path_sweep2d(topProfile(widthMM = Branch_Channel_Width_in_Units*Grid_Size), 
                             path= outputDirection == "Forward" ? [
                                 [0,0], //start
-                                [0,straightDistance*sign(unitsUp)+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
-                                [unitsOver*Grid_Size,unitsUp*Grid_Size+Grid_Size*sign(unitsUp)-straightDistance*sign(unitsUp)-0.1], //movement to position before last straight
-                                [unitsOver*Grid_Size,unitsUp*Grid_Size+Grid_Size*sign(unitsUp)] //last position either out the angle or straight out
+                                [0,straightDistance+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
+                                [endPositionX, endPositionY-straightDistance-Branch_Units_Extra_Length*Grid_Size+0.1], //movement to position before last straight
+                                [endPositionX, endPositionY] //last position either out the angle or straight out
                             ] :
                             [ //90 degree path
                                 [0,0], //start
                                 [0,straightDistance*sign(unitsUp)+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
-                                [unitsOver*Grid_Size+Grid_Size/2*sign(unitsOver)-straightDistance*sign(unitsOver),unitsUp*Grid_Size+Grid_Size/2*sign(unitsUp)], //movement to position before last straight
-                                [unitsOver*Grid_Size+Grid_Size/2*sign(unitsOver),unitsUp*Grid_Size+Grid_Size/2*sign(unitsUp)] //last position either out the angle or straight out
+                                [unitsOver * Grid_Size + Grid_Size / 2 - straightDistance, unitsUp * Grid_Size + Grid_Size / 2], //movement to position before last straight
+                                [unitsOver*Grid_Size+Grid_Size/2,unitsUp*Grid_Size+Grid_Size/2] //last position either out the angle or straight out
                             ]
-                            );
-                    }}
+                        );
+                    }
+                    //branch channel delete
+                    tag("channel_clear") 
+                    right_half(s=max(unitsUp*Grid_Size*4,unitsOver*Grid_Size*4)) {//s should be a number larger than twice the size of the object's largest axis. Thew some random numbers in here for now. If mirror issues surface, this is likely the culprit. 
+                        path_sweep2d(topDeleteProfile(widthMM = Branch_Channel_Width_in_Units*Grid_Size), 
+                            path= outputDirection == "Forward" ? [
+                                [0,0], //start
+                                [0,straightDistance+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
+                                [endPositionX, endPositionY-straightDistance-Branch_Units_Extra_Length*Grid_Size+0.1], //movement to position before last straight
+                                [endPositionX, endPositionY] //last position either out the angle or straight out
+                            ] :
+                            [ //90 degree path
+                                [0,0], //start
+                                [0,straightDistance*sign(unitsUp)+0.1], //distance forward or back. 0.05 is a subtle cheat that allows for a perfect side shift without a bad polygon
+                                [unitsOver * Grid_Size + Grid_Size / 2 - straightDistance, unitsUp * Grid_Size + Grid_Size / 2], //movement to position before last straight
+                                [unitsOver*Grid_Size+Grid_Size/2,unitsUp*Grid_Size+Grid_Size/2] //last position either out the angle or straight out
+                            ]
+                        );
+                    }
+
+                }
+
             }
         children();
     }

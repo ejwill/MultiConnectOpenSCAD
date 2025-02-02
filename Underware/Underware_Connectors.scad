@@ -7,8 +7,15 @@ Credit to
     @dmgerman on MakerWorld and @David D on Printables for the bolt thread specs
     Jonathan at Keep Making for Multiboard
     @Lyric on Printables for the flush connector idea
+    SnazzyGreenWarrior for split printing logic
 
     
+Change Log:
+- 2024-12-06 
+    - Initial release
+- 2025-01-27
+    - Split snap connectors
+
 All parts except for Snap Connector are Licensed Creative Commons 4.0 Attribution Non-Commercial Share-Alike (CC-BY-NC-SA)
 Snap Connector adopts the Multiboard.io license at multiboard.io/license
 */
@@ -28,14 +35,22 @@ Snap_Connector_Height = 3;
 Snap_Holding_Tolerance = 1; //[0.5:0.05:2.0]
 //Length of the treaded portion of the snap connector. 3.6mm is standard.
 Snap_Thread_Height = 3.6;
+//Configure the snap to be split-printed for stronger holding.
+Split_Printing = true;
+
 
 /*[Options: Bolts]*/
-//length of the threaded portion of small screw. MB is 6mm thick and the recessed hole in base channels is 1mm deep. 
+//Length of the threaded portion of small screw. MB is 6mm thick and the recessed hole in base channels is 1mm deep.
 Thread_Length_Sm = 6.5;
+
+Bolt_Selection = "All"; // [All, Small MB Screw, Small MB Screw split, Small MB T Screw, Small MB T Screw tool]
+
 
 /*[Advanced Options]*/
 //Color of part (color names found at https://en.wikipedia.org/wiki/Web_colors)
 Global_Color = "SlateBlue";
+//Octogon Scaling - Decrease if the octogon is too large for the snap connector. Increase if the octogon is too small.
+Oct_Scaling = 1; //[0.8:0.01:1.2]
 
 /*[Hidden]*/
 ///*[Small Screw Profile]*/
@@ -68,22 +83,31 @@ MOUNTING PARTS
 
 */
 
-if(Show_Part == "Snap Connector")
-    recolor(Global_Color)
-    make_ThreadedSnap(offset = Snap_Connector_Height, anchor=BOT);
+//!make_ThreadedSnap(offset = Snap_Connector_Height, anchor=BOT) show_anchors();
+union(){
+    if(Show_Part == "Snap Connector")
+        
+            recolor(Global_Color)
+            if (Split_Printing)
+                split_Part(split_width =20, connect=BOT, largest_size = 45) zrot(45)
+                    make_ThreadedSnap(offset = Snap_Connector_Height, anchor=BOT);
+            else
+                make_ThreadedSnap(offset = Snap_Connector_Height, anchor=BOT);
+}
 
 //Small MB Screw based on step file
-if(Show_Part == "Bolts")
-recolor(Global_Color)
-diff()
-fwd(30)
-cyl(d=12,h=2.5, $fn=6, anchor=BOT, chamfer2=0.6){
-    attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Thread_Length_Sm, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false);
-    tag("remove")attach(BOT, BOT, inside=true, shiftout=0.01) cyl(h=16.01, d= Inner_Hole_Diameter_Sm, $fn=25, chamfer1=-1);
+if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB Screw")){
+    recolor(Global_Color)
+    diff()
+    fwd(30)
+    cyl(d=12,h=2.5, $fn=6, anchor=BOT, chamfer2=0.6){
+        attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Thread_Length_Sm, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false);
+        tag("remove")attach(BOT, BOT, inside=true, shiftout=0.01) cyl(h=16.01, d= Inner_Hole_Diameter_Sm, $fn=25, chamfer1=-1);
+    }
 }
 
 //Small MB Screw split
-if(Show_Part == "Bolts"){
+if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB Screw split")){
     recolor(Global_Color)
     diff()
     {
@@ -98,15 +122,16 @@ if(Show_Part == "Bolts"){
 }
 
 //Small MB T Screw
-if(Show_Part == "Bolts")
-recolor(Global_Color)
-diff()
-back(30)
-up(2)yrot(90)left_half(x=2)right_half(x=-2)cuboid([4,14,2.5], chamfer=0.75, edges=[LEFT+FRONT, RIGHT+FRONT, RIGHT+BACK, LEFT+BACK], anchor=BOT){
-    attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Thread_Length_Sm, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false);
+if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB T Screw")){
+    recolor(Global_Color)
+    diff()
+    back(30)
+    up(2)yrot(90)left_half(x=2)right_half(x=-2)cuboid([4,14,2.5], chamfer=0.75, edges=[LEFT+FRONT, RIGHT+FRONT, RIGHT+BACK, LEFT+BACK], anchor=BOT){
+        attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Thread_Length_Sm, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false);
+    }
 }
 
-if(Show_Part == "Bolts")
+if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB T Screw tool")){
 //Small MB T Screw tool
 recolor(Global_Color)
 back(50)
@@ -120,29 +145,44 @@ back(50)
             position([LEFT+BOT])fillet(l=11, r=1.5, spin=180, orient=BACK);
         }
     }
+}
 
 
 //Large MB Screw based on step file (not used yet)
 if(Show_Part == "Large Bolt")
-color_this(Global_Color)
-diff()
-right(channelWidth+25) back(30)
-cyl(d=30,h=2.5, $fn=6, anchor=BOT, chamfer2=0.6){
-    attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Lg, l=10, pitch=Pitch_Lg, flank_angle = Flank_Angle_Lg, thread_depth = Thread_Depth_Lg, $fn=50, bevel2 = true, blunt_start=false);
-    tag("remove")attach(BOT, BOT, inside=true, shiftout=0.01) cyl(h=16.01, d= Inner_Hole_Diameter_Lg, $fn=25 );
+    color_this(Global_Color)
+    diff()
+    right(channelWidth+25) back(30)
+    cyl(d=30,h=2.5, $fn=6, anchor=BOT, chamfer2=0.6){
+        attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Lg, l=10, pitch=Pitch_Lg, flank_angle = Flank_Angle_Lg, thread_depth = Thread_Depth_Lg, $fn=50, bevel2 = true, blunt_start=false);
+        tag("remove")attach(BOT, BOT, inside=true, shiftout=0.01) cyl(h=16.01, d= Inner_Hole_Diameter_Lg, $fn=25 );
 }
 
+//SPLIT PART
+//Split part takes a part and splits in half on the bed with a connector. This is often used for stronger connections in things like threads due to layer line orientation. 
+module split_Part(split_distance=0.4, split_width=5, connect=TOP, largest_size = 50, connector_height = 0.2){
+    union(){
+        cuboid([split_distance+0.02, split_width, connector_height], anchor=BOT){
+            xrot(-90) back(split_distance/4) attach(RIGHT, connect, overlap=0.01)
+                left_half(s = largest_size*2) children();
+            xrot(-90) back(split_distance/4)attach(LEFT, connect, overlap=0.01)
+                right_half(s = largest_size*2) children();
+        }
+    }
+}
 
 //THREADED SNAP
 module make_ThreadedSnap (offset = 3, anchor=BOT,spin=0,orient=UP){
-    attachable(anchor, spin, orient, size=[11.4465*2, 11.4465*2, 6.17+offset]){
-    snapConnectBacker(offset = offset, holdingTolerance = Snap_Holding_Tolerance) {
-        attach(TOP, BOT, overlap=0.01) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Snap_Thread_Height, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false, anchor=anchor,spin=spin,orient=orient);
+    attachable(anchor, spin, orient, size=[11.4465*2, 11.4465*2, 6.21+offset+Snap_Thread_Height]){
+    down(Snap_Thread_Height/2)
+    union(){
+        snapConnectBacker(offset = offset, holdingTolerance = Snap_Holding_Tolerance) {
+            attach(TOP, BOT, overlap=0.05) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Snap_Thread_Height, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false, anchor=anchor,spin=spin,orient=orient);
+        }
     }
     children();
     }
 }
-
 
 /*
 
@@ -151,7 +191,7 @@ BEGIN SNAP CONNECTOR
 */
 
 module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0, orient=UP){
-    attachable(anchor, spin, orient, size=[11.4465*2, 11.4465*2, 6.17+offset]){ 
+    attachable(anchor, spin, orient, size=[11.4465*2, 11.4465*2, 6.21+offset]){ 
     //bumpout profile
     bumpout = turtle([
         "ymove", -2.237,
@@ -165,7 +205,7 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0, 
     union(){
     diff("remove")
         //base
-            oct_prism(h = 4.23, r = 11.4465, anchor=BOT) {
+            oct_prism(h = 4.23, r = 11.4465*Oct_Scaling, anchor=BOT) {
                 //first bevel
                 attach(TOP, BOT, shiftout=-0.01) oct_prism(h = 1.97, r1 = 11.4465, r2 = 12.5125, $fn =8, anchor=BOT)
                     //top - used as offset. Independen snap height is 2.2
