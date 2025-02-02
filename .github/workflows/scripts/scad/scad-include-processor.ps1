@@ -61,7 +61,13 @@ function Publish-ScadFile-To-Output {
         [string]$outputFolderPath
     )
 
-    $relativePath = $scadFile.Path.Substring((Get-Location).Path.Length).TrimStart('\')
+    $repoRoot = (Get-Location).Path
+    if ($scadFile.Path.Length -le $repoRoot.Length) {
+        Write-Error "The file path is shorter than or equal to the repository root path."
+        return
+    }
+
+    $relativePath = $scadFile.Path.Substring($repoRoot.Length).TrimStart('\')
     $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $relativePath
     Write-Host "Publishing file to: $outputFilePath"
 
