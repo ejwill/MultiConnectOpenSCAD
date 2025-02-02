@@ -24,12 +24,6 @@ jobs:
       - name: List repository contents
         run: ls -R
 
-      # Run the include processor script
-      # - name: Process Includes
-      #   shell: pwsh
-      #   run: |
-      #     pwsh ./.github/workflows/includeProcessor.ps1 -path "Underware" -sharedFolderPath "Underware/shared/"
-
       # Get the files that have been changed in the PR
       - name: Get changed files
         id: changed-files
@@ -37,6 +31,7 @@ jobs:
         with:
           files: '**/*.scad'
           separator: ','
+          files_ignore: 'output/**'
           # files_yaml: |
           #   underware:
           #     - Underware/**
@@ -61,12 +56,11 @@ jobs:
             $pathArray = $env:UNDERWARE_ALL_CHANGED_FILES.Split(',')
             Write-Host "Processing SCAD files: $pathArray"
             ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray $pathArray
-        # pwsh -File ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray $pathArray
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
-      - name: Upload underware folder
+      - name: Upload Scad Output folder
         uses: actions/upload-artifact@v4
         if: steps.process-scad.outcome == 'success'
         with:
-          name: underware-artifacts
-          path: Underware/output
+          name: scad-artifacts
+          path: output

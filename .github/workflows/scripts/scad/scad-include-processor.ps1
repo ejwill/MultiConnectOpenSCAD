@@ -24,18 +24,6 @@ function Invoke-ProcessScadFile {
         [string]$outputFolderPath
     )
 
-    # If outputFolderPath is not provided, create it relative to the original file's folder
-    if (-not $outputFolderPath) {
-        $originalDirectory = Split-Path -Parent $filePath
-        $outputFolderPath = Join-Path -Path $originalDirectory -ChildPath 'output'
-    }
-
-    # Ensure the processed folder exists
-    if (-not (Test-Path -Path $outputFolderPath)) {
-        New-Item -Path $outputFolderPath -ItemType Directory -Force | Out-Null
-        Write-Host "Created processed folder: $outputFolderPath"
-    }
-
     Write-Host "Processing file: $filePath"
 
     # Read the file content and put it in a Scadfile object
@@ -73,15 +61,18 @@ function Publish-ScadFile-To-Output {
         [string]$outputFolderPath
     )
 
-    $outputFilePath = Join-Path -Path $OutputFolderPath -ChildPath (Split-Path -Leaf $scadFile.Path)
+    $relativePath = $scadFile.Path.Substring((Get-Location).Path.Length).TrimStart('\')
+    $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $relativePath
     Write-Host "Publishing file to: $outputFilePath"
 
-    # Create the output folder if it does not exist
-    Test-FolderExists -folderPath $outputFolderPath
+    # Ensure the directory for the output file exists
+    $outputDirectory = Split-Path -Path $outputFilePath -Parent
+    if (-not (Test-Path -Path $outputDirectory)) {
+        New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+    }
 
     # Write the new content to the output file
     Set-Content -Path $outputFilePath -Value $scadFile.Content -Force
-    
 }
 
 function New-ScadFile {
@@ -232,12 +223,37 @@ function Test-FolderExists {
 }
 
 # Main script logic
+
+# Set default output folder path if not provided
+if (-not $outputFolderPath) {
+    $repoRoot = (Get-Location).Path
+    $outputFolderPath = Join-Path -Path $repoRoot -ChildPath "output"
+    Write-Host "Output folder path not provided. Using default: $outputFolderPath"
+}
+
+# Ensure the output folder exists
+if (-not (Test-Path -Path $outputFolderPath)) {
+    New-Item -ItemType Directory -Path $outputFolderPath | Out-Null
+    Write-Host "Created output folder: $outputFolderPath"
+}
+
+if (-not $pathArray -or $pathArray.Count -eq 0) {
+    Write-Error "No paths provided to process."
+    exit 1
+}
 # Check if the path is a file or a folder
 Write-Host "Processing Files: $($pathArray -join ', ')"
 Write-Host "Processing Files: $pathArray"
 Write-Host "Type of pathArray: $($pathArray.GetType().Name)"
+
 foreach ($path in $pathArray) {
     Write-Host "Processing Path: $path"
+    
+    if ([string]::IsNullOrWhiteSpace($path)) {
+        Write-Warning "Skipping empty path."
+        continue
+    }
+
     if (Test-Path $path) {
         if (Test-Path $path -PathType Leaf) {
             Write-Host "Processing file: $path"
@@ -247,11 +263,9 @@ foreach ($path in $pathArray) {
             Invoke-ProcessScadFilesInFolder -folderPath $path -outputFolderPath $outputFolderPath
         } else {
             Write-Warning "The path is neither a valid file or a folder: $path"
-            continue
         }
     } else {
         Write-Warning "The provided path does not exist: $path"
-        continue
     }
 }
 
