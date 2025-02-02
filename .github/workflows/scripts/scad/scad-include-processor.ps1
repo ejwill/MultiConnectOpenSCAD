@@ -40,7 +40,8 @@ function Invoke-ProcessScadFile {
 
     # Read the file content and put it in a Scadfile object
     $fileContent = Get-Content -Path $filePath -Raw
-    # $scadFile = [Scadfile]::new($filePath, $fileContent)
+
+    Write-Host "ContentRead"
     $scadFile = New-Object ScadFile -ArgumentList $filePath, $fileContent
 
     if (-not $scadFile) {
@@ -50,18 +51,20 @@ function Invoke-ProcessScadFile {
 
     # Get the include names from the file content
     $scadFile.Includes = Get-Includes-From-ScadFile -scadFile $scadFile
+    Write-Host "Retrived Includes"
 
     # Read the content of each include and put it in an Include object
     $includeFiles = Read-IncludeFiles -scadFile $scadFile
+    Write-Host "Read Includes"
 
     # Write the new content to the file
     $newScadFile = New-ScadFile -scadFile $scadFile -includeFiles $includeFiles
+    Write-Host "New Scad File Created"
 
     # Write the new content to a new file in the output folder
     Publish-ScadFile-To-Output -scadFile $newScadFile -outputFolderPath $outputFolderPath
 
     Write-Host "Finished Processing file:" $scadFile.Name
-    
 }
 
 function Publish-ScadFile-To-Output {
@@ -231,18 +234,24 @@ function Test-FolderExists {
 # Main script logic
 # Check if the path is a file or a folder
 Write-Host "Processing Files: $($pathArray -join ', ')"
+Write-Host "Processing Files: $pathArray"
+Write-Host "Type of pathArray: $($pathArray.GetType().Name)"
 foreach ($path in $pathArray) {
-    Write-Host "Processing file: $path"
+    Write-Host "Processing Path: $path"
     if (Test-Path $path) {
         if (Test-Path $path -PathType Leaf) {
+            Write-Host "Processing file: $path"
             Invoke-ProcessScadFile -filePath $path -outputFolderPath $outputFolderPath
         } elseif (Test-Path $path -PathType Container) {
+            Write-Host "Processing folder: $path"
             Invoke-ProcessScadFilesInFolder -folderPath $path -outputFolderPath $outputFolderPath
         } else {
-            Write-Warning "The path is neither a valid file nor a folder: $path"
+            Write-Warning "The path is neither a valid file or a folder: $path"
+            continue
         }
     } else {
         Write-Warning "The provided path does not exist: $path"
+        continue
     }
 }
 
