@@ -26,11 +26,12 @@ function Invoke-ProcessScadFile {
 
     Write-Host "Processing file: $filePath"
 
+    $fileDetails = Get-Item -Path $filePath
+
     # Read the file content and put it in a Scadfile object
     $fileContent = Get-Content -Path $filePath -Raw
 
-    Write-Host "ContentRead"
-    $scadFile = New-Object ScadFile -ArgumentList $filePath, $fileContent
+    $scadFile = New-Object ScadFile -ArgumentList $fileDetails.FullName, $fileContent
 
     if (-not $scadFile) {
         Write-Error "Failed to create ScadFile object for file: $filePath"
@@ -62,12 +63,20 @@ function Publish-ScadFile-To-Output {
     )
 
     $repoRoot = (Get-Location).Path
-    if ($scadFile.Path.Length -le $repoRoot.Length) {
+    $filePath = $scadFile.Path
+    
+    # Ensure the file path is absolute
+    if (-not (Test-Path -Path $filePath -PathType Leaf)) {
+        $filePath = Join-Path -Path $repoRoot -ChildPath $filePath
+    }
+
+    if ($filePath.Length -le $repoRoot.Length) {
         Write-Error "The file path is shorter than or equal to the repository root path."
         return
     }
 
-    $relativePath = $scadFile.Path.Substring($repoRoot.Length).TrimStart('\')
+    # Calculate the relative path from the repository root
+    $relativePath = $filePath.Substring($repoRoot.Length).TrimStart('\', '/')
     $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $relativePath
     Write-Host "Publishing file to: $outputFilePath"
 
