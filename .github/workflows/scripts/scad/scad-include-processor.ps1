@@ -60,7 +60,7 @@ function Invoke-ProcessScadFile {
     # Write the new content to a new file in the output folder
     Publish-ScadFile-To-Output -scadFile $newScadFile -outputFolderPath $outputFolderPath
 
-    Write-Host "Finished Processing file: $scadFile.Name"
+    Write-Host "Finished Processing file:" $scadFile.Name
     
 }
 
@@ -230,7 +230,7 @@ function Test-FolderExists {
 
 # Main script logic
 # Check if the path is a file or a folder
-Write-Host "Processing Files: $pathArray"
+Write-Host "Processing Files: $($pathArray -join ', ')"
 foreach ($path in $pathArray) {
     Write-Host "Processing file: $path"
     if (Test-Path $path) {
