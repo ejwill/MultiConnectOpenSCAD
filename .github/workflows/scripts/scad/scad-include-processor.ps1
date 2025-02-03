@@ -129,6 +129,19 @@ function Read-IncludeFiles {
 
     foreach ($includeName in $scadFile.Includes) {
         try {
+            $found = Find-File -directory $scadDirectory -fileName $includeName
+
+            if ($found) {
+                Write-Verbose "Found include file: $includeName at $($found.FullName)"
+
+                # Create and populate an Include object
+                $include = [Include]::new($includeName)
+                $include.Path = $found.FullName
+                $include.Content = Get-Content -Path $found.FullName -Raw
+
+                $includeArrary += $include
+            }
+            
             $foundInclude = Find-Include-File -scadDirectory $scadDirectory -includeFileName $includeName
 
             # check that $foundInclude is not null and is and Include object
@@ -143,6 +156,57 @@ function Read-IncludeFiles {
     return $includeArrary
 }
 
+function Find-File {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$directory,
+        [Parameter(Mandatory = $true)]
+        [string]$fileName
+    )
+
+        # Define search locations
+        $searchLocations = @(
+            # Same folder as the file
+            $directory,
+    
+            # Subfolders within the current folder (recursive)
+            (Get-ChildItem -Path $scadDirectory -Directory -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
+    
+            # Sibling folders in the same parent directory
+            (Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
+    
+            # Repository root
+            (Get-PSDrive -Name ((Get-Item -Path $directory).PSDrive.Name)).Root
+        )
+    
+        try {
+            foreach ($location in $searchLocations) {
+                # Skip null or invalid paths
+                if (-not $location -or -not (Test-Path -Path $location)) {
+                    continue
+                }
+    
+                # Search for the file in the current location
+                $found = Get-ChildItem -Path $location -Filter $fileName -File -ErrorAction SilentlyContinue |
+                         Select-Object -First 1
+    
+                if ($found) {
+                    Write-Verbose "Found file: $fileName at $($found.FullName)"
+                    return $found
+                }
+            }
+    
+            # Log a warning if the file was not found
+            Write-Warning "No file found for: $fileName"
+            return $null
+        }
+        catch {
+            # Handle unexpected errors
+            Write-Warning "Error searching for include file '$includeFileName': $_"
+            return $null
+        }
+}
+
 function Find-Include-File {
     param (
         [Parameter(Mandatory = $true)]
@@ -152,46 +216,69 @@ function Find-Include-File {
         [string]$includeFileName
     )
 
+    
+
+    # If the include already exists as an absolute path, use it directly
+    if (Test-Path -Path $includeFileName -PathType Leaf) {
+        return New-Object Include -ArgumentList $includeFileName, (Get-Content -Path $includeFileName -Raw), $includeFileName
+    }
+
     # Define the parent directory
-    $parentDirectory = Split-Path -Parent $scadDirectory
+    # $parentDirectory = Split-Path -Parent $scadDirectory
 
-    # Define search locations
-    $searchLocations = @(
-        # Same folder as the file
-        $scadDirectory,
+    # # Define search locations
+    # $searchLocations = @(
+    #     # Same folder as the file
+    #     $scadDirectory,
 
-        # Subfolders within the current folder (recursive)
-        (Get-ChildItem -Path $scadDirectory -Directory -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
+    #     # Subfolders within the current folder (recursive)
+    #     (Get-ChildItem -Path $scadDirectory -Directory -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
 
-        # Sibling folders in the same parent directory
-        (Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
+    #     # Sibling folders in the same parent directory
+    #     (Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
 
-        # Repository root
-        (Get-PSDrive -Name ((Get-Item -Path $scadDirectory).PSDrive.Name)).Root
-    )
+    #     # Repository root
+    #     (Get-PSDrive -Name ((Get-Item -Path $scadDirectory).PSDrive.Name)).Root
+    # )
+
 
     try {
-        foreach ($location in $searchLocations) {
-            # Skip null or invalid paths
-            if (-not $location -or -not (Test-Path -Path $location)) {
-                continue
-            }
+        $found = Find-File -directory $scadDirectory -fileName $includeFileName
 
-            # Search for the file in the current location
-            $found = Get-ChildItem -Path $location -Filter $includeFileName -File -ErrorAction SilentlyContinue |
-                     Select-Object -First 1
+        if ($found) {
+            Write-Verbose "Found include file: $includeFileName at $($found.FullName)"
 
-            if ($found) {
-                Write-Verbose "Found include file: $includeFileName at $($found.FullName)"
+            # Create and populate an Include object
+            $include = [Include]::new($includeFileName)
+            $include.Path = $found.FullName
+            $include.Content = Get-Content -Path $found.FullName -Raw
 
-                # Create and populate an Include object
-                $include = [Include]::new($includeFileName)
-                $include.Path = $found.FullName
-                $include.Content = Get-Content -Path $found.FullName -Raw
-
-                return $include
-            }
+            return $include
         }
+
+
+
+        # foreach ($location in $searchLocations) {
+        #     # Skip null or invalid paths
+        #     if (-not $location -or -not (Test-Path -Path $location)) {
+        #         continue
+        #     }
+
+        #     # Search for the file in the current location
+        #     $found = Get-ChildItem -Path $location -Filter $includeFileName -File -ErrorAction SilentlyContinue |
+        #              Select-Object -First 1
+
+        #     if ($found) {
+        #         Write-Verbose "Found include file: $includeFileName at $($found.FullName)"
+
+        #         # Create and populate an Include object
+        #         $include = [Include]::new($includeFileName)
+        #         $include.Path = $found.FullName
+        #         $include.Content = Get-Content -Path $found.FullName -Raw
+
+        #         return $include
+        #     }
+        # }
 
         # Log a warning if the file was not found
         Write-Warning "No file found for include: $includeFileName"
