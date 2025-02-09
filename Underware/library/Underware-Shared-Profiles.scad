@@ -99,5 +99,5 @@ function topDeleteProfileHalf(heightMM = 12)=
 
 
 //calculate the max x and y points. Useful in calculating size of an object when the path are all positive variables originating from [0,0]
-// function maxX(path) = max([for (p = path) p[0]]) + abs(min([for (p = path) p[0]]));
-// function maxY(path) = max([for (p = path) p[1]]) + abs(min([for (p = path) p[1]]));
+function maxX(path) = max([for (p = path) p[0]]) + abs(min([for (p = path) p[0]]));
+function maxY(path) = max([for (p = path) p[1]]) + abs(min([for (p = path) p[1]]));

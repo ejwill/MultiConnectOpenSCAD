@@ -528,37 +528,6 @@ function Get-Imports-From-ScadFile {
     return $importArray
 }
 
-function Get-ModulesFromFile {
-    param (
-        [string]$filePath
-    )
-
-    $modules = @()
-    $currentModule = $null
-    $currentContent = @()
-
-    foreach ($line in Get-Content -Path $filePath) {
-        if ($line -match 'module\s+(\w+)\s*\(') {
-            if ($currentModule) {
-                $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
-            }
-            $currentModule = $matches[1]
-            $currentContent = @($line)
-        } elseif ($currentModule) {
-            $currentContent += $line
-        }
-    }
-
-    if ($currentModule) {
-        $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
-    }
-
-    if (-not $modules) {
-        return @()
-    }
-    return $modules
-}
-
 function Get-LogicParts-From-ScadFileContent {
     param (
         [string]$Content,
@@ -597,6 +566,37 @@ function Get-LogicParts-From-ScadFileContent {
     }
 
     return $logicArrary
+}
+
+function Get-ModulesFromFile {
+    param (
+        [string]$filePath
+    )
+
+    $modules = @()
+    $currentModule = $null
+    $currentContent = @()
+
+    foreach ($line in Get-Content -Path $filePath) {
+        if ($line -match 'module\s+(\w+)\s*\(') {
+            if ($currentModule) {
+                $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
+            }
+            $currentModule = $matches[1]
+            $currentContent = @($line)
+        } elseif ($currentModule) {
+            $currentContent += $line
+        }
+    }
+
+    if ($currentModule) {
+        $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
+    }
+
+    if (-not $modules) {
+        return @()
+    }
+    return $modules
 }
 
 function Get-FunctionsFromFile {
