@@ -174,9 +174,6 @@ function Invoke-ProcessScadFile {
     $scadFile.Modules = Get-ModulesFromFile -filePath $scadFile.Path
     $scadFile.Functions = Get-FunctionsFromFile -filePath $scadFile.Path
 
-    # $scadFile.Modules = Get-LogicParts-From-ScadFileContent -Content $scadFile.Content -Type Module
-    # $scadFile.Functions = Get-LogicParts-From-ScadFileContent -Content $scadFile.Content -Type Function
-
     if (-not $scadFile) {
         Write-Error "Failed to create ScadFile object for file: $filePath"
         return
@@ -184,11 +181,6 @@ function Invoke-ProcessScadFile {
     
 
     # Get the include names from the file content
-    # $scadFile.Includes = Get-Includes-From-ScadFile -scadFile $scadFile
-    # $includes = Get-Includes-From-ScadFile -Content $scadFile.Content
-    # if (-not $includes) {
-    #     $includes = @()
-    # }
     $includes = Get-Imports-From-ScadFile -scadFile $scadFile -type Include
     if (-not $includes) {
         $includes = @()
@@ -349,46 +341,6 @@ function Read-ImportsFromScadFile {
     }
 
     return $importArrary
-
-    # if ($type -eq [ImportType]::Include) {
-    #     $imports = $scadFile.Includes
-    # } elseif ($type -eq [ImportType]::Use) {
-    #     $imports = $scadFile.Uses
-    # } else {
-    #     Write-Warning "Unknown import type: $type"
-    #     return $importArrary
-    # }
-
-    # foreach ($import in $imports) {
-    #     $processingImport = $import
-    #     try {
-    #         $found = Find-File -directory $scadDirectory -fileName $processingImport.Name
-
-    #         if ($found) {
-    #             Write-Verbose "Found include file: $import.Name at $($found.FullName)"
-
-    #             $foundImport = New-Object Import -ArgumentList @($import.Name, $type)
-
-    #             # Create and populate an Include object
-    #             $foundImport.Path = $found.FullName
-    #             $foundImport.Content = Get-Content -Path $found.FullName -Raw
-    #             $foundImport.Modules = Get-ModulesFromFile -filePath $found.FullName
-    #             if (-not $foundImport.Modules) {
-    #                 $foundImport.Modules = @()
-    #             }
-    #             $foundImport.Functions = Get-FunctionsFromFile -filePath $found.FullName
-    #             if (-not $foundImport.Functions) {
-    #                 $foundImport.Functions = @()
-    #             }
-
-    #             $importArrary += $foundImport
-    #         }
-    #     } catch {
-    #         Write-Warning "Could not read file: $($import.Name) . $_"
-    #     }
-    # }
-
-    # return $importArrary
 }
 
 function Read-IncludeFiles {
