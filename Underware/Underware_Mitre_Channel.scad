@@ -70,7 +70,7 @@ color_this(Global_Color)
 
 //outside mitre channel
 color_this(Global_Color)
-back(30)zrot(180) {
+back(10+Channel_Width_in_Units*Grid_Size)zrot(180) {
 half_of(DOWN+RIGHT, s=Channel_Length_Units*Grid_Size*2)
     path_sweep(topProfile(widthMM = channelWidth, heightMM = Channel_Internal_Height), turtle(["xmove", Length_of_Longest_Edge_1*2]), anchor=TOP, orient=BOT);
 

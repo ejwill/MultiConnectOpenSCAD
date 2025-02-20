@@ -43,7 +43,7 @@ Split_Printing = true;
 //Length of the threaded portion of small screw. MB is 6mm thick and the recessed hole in base channels is 1mm deep.
 Thread_Length_Sm = 6.5;
 
-Bolt_Selection = "All"; // [All, Small MB Screw, Small MB Screw split, Small MB T Screw, Small MB T Screw tool]
+Bolt_Selection = "Small MB T Screw"; // [All, Small MB Screw, Small MB Screw split, Small MB T Screw, Small MB T Screw tool]
 
 
 /*[Advanced Options]*/
@@ -95,6 +95,7 @@ union(){
                 make_ThreadedSnap(offset = Snap_Connector_Height, anchor=BOT);
 }
 
+
 //Small MB Screw based on step file
 if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB Screw")){
     recolor(Global_Color)
@@ -106,9 +107,12 @@ if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small 
     }
 }
 
+
 //Small MB Screw split
+
 if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB Screw split")){
     recolor(Global_Color)
+    back(50)
     diff()
     {
         left(0.2)yrot(-90)right_half()cyl(d=12,h=2.5, $fn=6, anchor=BOT, chamfer2=0.6){
@@ -121,20 +125,20 @@ if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small 
     }
 }
 
+
 //Small MB T Screw
 if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB T Screw")){
     recolor(Global_Color)
     diff()
-    back(30)
     up(2)yrot(90)left_half(x=2)right_half(x=-2)cuboid([4,14,2.5], chamfer=0.75, edges=[LEFT+FRONT, RIGHT+FRONT, RIGHT+BACK, LEFT+BACK], anchor=BOT){
         attach(TOP, BOT) trapezoidal_threaded_rod(d=Outer_Diameter_Sm, l=Thread_Length_Sm, pitch=Pitch_Sm, flank_angle = Flank_Angle_Sm, thread_depth = Thread_Depth_Sm, $fn=50, bevel2 = true, blunt_start=false);
     }
 }
 
-if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB T Screw tool")){
+if(Show_Part == "Bolts" && (Bolt_Selection == "All" || Bolt_Selection == "Small MB T Screw tool" || Bolt_Selection == "Small MB T Screw")){
 //Small MB T Screw tool
 recolor(Global_Color)
-back(50)
+back(30)
     diff()
     cyl(h=8, d=14.5, $fn=50, anchor=BOT, chamfer2=1, chamfer1=0.5){
        //bottom cutout
