@@ -7,7 +7,7 @@ param (
 $isGitHubActions = $env:GITHUB_ACTIONS -eq 'true'
 
 # Initialize a hashset to store SCAD files to search in
-$scadFiles = @{}
+$scadFiles = @()
 
 # Initialize a hash table to store referencing files per library
 $referencingFilesMap = @{}
@@ -33,7 +33,7 @@ foreach ($libraryFilePath in $libraryFilePaths) {
     }
 
     # Regex pattern to detect "include" or "use" statements referencing the library file
-    $regexPattern = "include\s*<[^>]*\Q$($libraryFile.Name)\E>" + "|" + "use\s*<[^>]*\Q$($libraryFile.Name)\E>"
+    $regexPattern = "include\s*<[^>]*$($libraryFile.Name)>|use\s*<[^>]*$($libraryFile.Name)>"
 
     # Initialize an array to store referencing files for this library
     $referencingFilesMap[$libraryFile.FullName] = @()
@@ -54,14 +54,16 @@ foreach ($libraryFilePath in $libraryFilePaths) {
 
     if ($referencingFiles.Count -gt 0) {
         Write-Host "The following files reference the library file '$($libraryFile.Name)':"
-        $referencingFiles | ForEach-Object { Write-Host $_ }
+        foreach ($file in $referencingFiles) {
+            Write-Host $file
+        }
     } else {
         Write-Host "No files reference the library file '$($libraryFile.Name)'."
     }
-}
 
-# Set output variable for GitHub Actions
-if ($isGitHubActions) {
-    $referencingFilesString = $referencingFilesMap.Values | ForEach-Object { $_ -join "," }
-    "referencing_files=$referencingFilesString" | Out-File -FilePath $env:GITHUB_ENV -Append
+    # Set output for GitHub Actions
+    if ($isGitHubActions) {
+        $referencingFilesString = $referencingFiles -join ","
+        Write-Output "::set-output name=referencing_files::$referencingFilesString"
+    }
 }

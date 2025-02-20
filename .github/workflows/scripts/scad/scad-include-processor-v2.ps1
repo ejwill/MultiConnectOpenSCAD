@@ -1,635 +1,630 @@
-# Params for the script
-param (
-    [Parameter(Mandatory = $true)]
-    [string[]]$pathArray,  # The input path (file or folder)
+# # Params for the script
+# param (
+#     [Parameter(Mandatory = $true)]
+#     [string[]]$pathArray,  # The input path (file or folder)
 
-    [Parameter(Mandatory = $false)]
-    [string]$outputFolderPath # Default to "output" folder in the same directory as the input file
-)
+#     [Parameter(Mandatory = $false)]
+#     [string]$outputFolderPath # Default to "output" folder in the same directory as the input file
+# )
 
-# Define classes
-class ScadFile {
-    [string]$Path
-    [string]$Content
-    [string]$Name
-    [bool]$IsProcessed
-    [Import[]]$Imports
-    [Import[]]$Includes
-    [Import[]]$Uses
-    [Logic[]]$Modules
-    [Logic[]]$Functions
+# # Define classes
+# class ScadFile {
+#     [string]$Path
+#     [string]$Content
+#     [string]$Name
+#     [bool]$IsProcessed
+#     [Import[]]$Imports
+#     [Import[]]$Includes
+#     [Import[]]$Uses
+#     [Logic[]]$Modules
+#     [Logic[]]$Functions
 
-    # Default constructor
-    ScadFile() {}
+#     # Default constructor
+#     ScadFile() {}
 
-    # Constructor with path and content
-    ScadFile([string]$path, [string]$content) {
-        $this.Path = $path
-        $this.Content = $content
-        $this.Name = Split-Path $path -Leaf
-        $this.IsProcessed = $false
-        $this.Imports = @()
-        $this.Includes = @()
-        $this.Uses = @()
-        $this.Modules = @()
-        $this.Functions = @()
-    }
-}
+#     # Constructor with path and content
+#     ScadFile([string]$path, [string]$content) {
+#         $this.Path = $path
+#         $this.Content = $content
+#         $this.Name = Split-Path $path -Leaf
+#         $this.IsProcessed = $false
+#         $this.Imports = @()
+#         $this.Includes = @()
+#         $this.Uses = @()
+#         $this.Modules = @()
+#         $this.Functions = @()
+#     }
+# }
 
-class Import {
-    [string]$Content
-    [string]$Name
-    [string]$Path
-    [Logic[]]$Modules
-    [Logic[]]$Functions
-    [ImportType]$Type
+# class Import {
+#     [string]$Content
+#     [string]$Name
+#     [string]$Path
+#     [Logic[]]$Modules
+#     [Logic[]]$Functions
+#     [ImportType]$Type
     
 
-    # Default constructor
-    Import([string]$name, [ImportType]$type) {
-        $this.Name = $name
-        $this.Content = $null
-        $this.Path = $null
-        $this.Modules = @()
-        $this.Functions = @()
-        $this.Type = $type
-    }
+#     # Default constructor
+#     Import([string]$name, [ImportType]$type) {
+#         $this.Name = $name
+#         $this.Content = $null
+#         $this.Path = $null
+#         $this.Modules = @()
+#         $this.Functions = @()
+#         $this.Type = $type
+#     }
 
-    Import([string]$name, [string]$content, [string]$path, [ImportType]$type) {
-        $this.Name = $name
-        $this.Content = $content
-        $this.Path = $path
-        $this.Modules = @()
-        $this.Functions = @()
-        $this.Type = $type
-    }
-}
+#     Import([string]$name, [string]$content, [string]$path, [ImportType]$type) {
+#         $this.Name = $name
+#         $this.Content = $content
+#         $this.Path = $path
+#         $this.Modules = @()
+#         $this.Functions = @()
+#         $this.Type = $type
+#     }
+# }
 
-class Include {
-    [string]$Content
-    [string]$Name
-    [string]$Path
-    [Module[]]$Modules
-    [Function[]]$Functions
-    [ImportType]$Type
+# class Include {
+#     [string]$Content
+#     [string]$Name
+#     [string]$Path
+#     [Module[]]$Modules
+#     [Function[]]$Functions
+#     [ImportType]$Type
     
 
-    # Default constructor
-    Include([string]$name) {
-        $this.Name = $name
-        $this.Content = $null
-        $this.Path = $null
-        $this.Modules = @()
-        $this.Functions = @()
-    }
+#     # Default constructor
+#     Include([string]$name) {
+#         $this.Name = $name
+#         $this.Content = $null
+#         $this.Path = $null
+#         $this.Modules = @()
+#         $this.Functions = @()
+#     }
 
-    Include([string]$name, [string]$content, [string]$path) {
-        $this.Name = $name
-        $this.Content = $content
-        $this.Path = $path
-        $this.Modules = @()
-        $this.Functions = @()
-        $this.Type = Type.Unknown
-    }
-}
+#     Include([string]$name, [string]$content, [string]$path) {
+#         $this.Name = $name
+#         $this.Content = $content
+#         $this.Path = $path
+#         $this.Modules = @()
+#         $this.Functions = @()
+#         $this.Type = Type.Unknown
+#     }
+# }
 
-class Logic {
-    [string]$Name
-    [string]$Content
-    [LogicType]$Type
+# class Logic {
+#     [string]$Name
+#     [string]$Content
+#     [LogicType]$Type
 
-    Logic() {}
+#     Logic() {}
 
-    Logic([string]$name, [string]$content, [LogicType]$type) {
-        $this.Name = $name
-        $this.Content = $content
-        $this.Type = $type
-    }
-}
+#     Logic([string]$name, [string]$content, [LogicType]$type) {
+#         $this.Name = $name
+#         $this.Content = $content
+#         $this.Type = $type
+#     }
+# }
 
-class Module {
-    [string]$Name
-    [string]$Content
+# class Module {
+#     [string]$Name
+#     [string]$Content
 
-    Module() {}
+#     Module() {}
 
-    # Default constructor
-    Module([string]$name, [string]$content) {
-        $this.Name = $name
-        $this.Content = $content
-    }
-}
+#     # Default constructor
+#     Module([string]$name, [string]$content) {
+#         $this.Name = $name
+#         $this.Content = $content
+#     }
+# }
 
-class Function {
-    [string]$Name
-    [string]$Content
+# class Function {
+#     [string]$Name
+#     [string]$Content
 
-    Function() {}
+#     Function() {}
 
-    Function([string]$name, [string]$content) {
-        $this.Name = $name
-        $this.Content = $content
-    }
-}
+#     Function([string]$name, [string]$content) {
+#         $this.Name = $name
+#         $this.Content = $content
+#     }
+# }
 
-enum ImportType {
-    Unknown
-    Include
-    Use
-}
+# enum ImportType {
+#     Unknown
+#     Include
+#     Use
+# }
 
-enum LogicType {
-    Unknown
-    Module
-    Function
-}
+# enum LogicType {
+#     Unknown
+#     Module
+#     Function
+# }
 
-function Invoke-ProcessScadFilesInFolder {
-    param (
-        [string]$folderPath,
-        [string]$outputFolderPath
-    )
+# function Invoke-ProcessScadFilesInFolder {
+#     param (
+#         [string]$folderPath,
+#         [string]$outputFolderPath
+#     )
 
-    $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse
-    foreach ($scadFile in $scadFiles) {
-        Invoke-ProcessScadFile -filePath $scadFile.FullName -outputFolderPath $outputFolderPath
-    }
-}
+#     $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse
+#     foreach ($scadFile in $scadFiles) {
+#         Invoke-ProcessScadFile -filePath $scadFile.FullName -outputFolderPath $outputFolderPath
+#     }
+# }
 
-function Invoke-ProcessScadFile {
-    param (
-        [string]$filePath,
-        [string]$outputFolderPath
-    )
+# function Invoke-ProcessScadFile {
+#     param (
+#         [string]$filePath,
+#         [string]$outputFolderPath
+#     )
 
-    Write-Host "Processing file: $filePath"
+#     Write-Host "Processing file: $filePath"
 
-    $fileDetails = Get-Item -Path $filePath
+#     $fileDetails = Get-Item -Path $filePath
 
-    # Read the file content and put it in a Scadfile object
-    $fileContent = Get-Content -Path $filePath -Raw
+#     # Read the file content and put it in a Scadfile object
+#     $fileContent = Get-Content -Path $filePath -Raw
 
-    $scadFile = New-Object ScadFile -ArgumentList $fileDetails.FullName, $fileContent
+#     $scadFile = New-Object ScadFile -ArgumentList $fileDetails.FullName, $fileContent
 
-    $scadFile.Modules = Get-ModulesFromFile -filePath $scadFile.Path
-    $scadFile.Functions = Get-FunctionsFromFile -filePath $scadFile.Path
+#     $scadFile.Modules = Get-ModulesFromFile -filePath $scadFile.Path
+#     $scadFile.Functions = Get-FunctionsFromFile -filePath $scadFile.Path
 
-    if (-not $scadFile) {
-        Write-Error "Failed to create ScadFile object for file: $filePath"
-        return
-    }
+#     if (-not $scadFile) {
+#         Write-Error "Failed to create ScadFile object for file: $filePath"
+#         return
+#     }
     
 
-    # Get the include names from the file content
-    $includes = Get-Imports-From-ScadFile -scadFile $scadFile -type Include
-    if (-not $includes) {
-        $includes = @()
-    }
-    $uses = Get-Imports-From-ScadFile -scadFile $scadFile -type Use
-    if (-not $uses) {
-        $uses = @()
-    }
+#     # Get the include names from the file content
+#     $includes = Get-Imports-From-ScadFile -scadFile $scadFile -type Include
+#     if (-not $includes) {
+#         $includes = @()
+#     }
+#     $uses = Get-Imports-From-ScadFile -scadFile $scadFile -type Use
+#     if (-not $uses) {
+#         $uses = @()
+#     }
 
-    $scadFile.Imports = $includes + $uses
+#     $scadFile.Imports = $includes + $uses
 
-    $scadFile.Includes = Get-Imports-From-ScadFile -scadFile $scadFile -type Include
-    $scadFile.Uses = Get-Imports-From-ScadFile -scadFile $scadFile -type Use
-    Write-Host "Retrived Includes"
+#     $scadFile.Includes = Get-Imports-From-ScadFile -scadFile $scadFile -type Include
+#     $scadFile.Uses = Get-Imports-From-ScadFile -scadFile $scadFile -type Use
+#     Write-Host "Retrived Includes"
 
-    # $includes = Read-ImportsFromScadFile -scadFile $scadFile -type Include
-    # $uses = Read-ImportsFromScadFile -scadFile $scadFile -type Use
+#     # $includes = Read-ImportsFromScadFile -scadFile $scadFile -type Include
+#     # $uses = Read-ImportsFromScadFile -scadFile $scadFile -type Use
 
-    $imports = Read-ImportsFromScadFile -scadFile $scadFile
-    if (-not $imports) {
-        $imports = @()
-    }
-    $scadFile.Imports = $imports
+#     $imports = Read-ImportsFromScadFile -scadFile $scadFile
+#     if (-not $imports) {
+#         $imports = @()
+#     }
+#     $scadFile.Imports = $imports
 
-    # $scadFile.Includes = Read-ImportsFromScadFile -scadFile $scadFile -type Include
-    # $scadFile.Uses = Read-ImportsFromScadFile -scadFile $scadFile -type Use
+#     # $scadFile.Includes = Read-ImportsFromScadFile -scadFile $scadFile -type Include
+#     # $scadFile.Uses = Read-ImportsFromScadFile -scadFile $scadFile -type Use
 
-    # Read the content of each include and put it in an Include object
-    # $includeFiles = Read-IncludeFiles -scadFile $scadFile
-    # Write-Host "Read Includes"
+#     # Read the content of each include and put it in an Include object
+#     # $includeFiles = Read-IncludeFiles -scadFile $scadFile
+#     # Write-Host "Read Includes"
 
-    # Write the new content to the file
-    $newScadFile = New-ScadFile -scadFile $scadFile -includeFiles $includeFiles
-    Write-Host "New Scad File Created"
+#     # Write the new content to the file
+#     $newScadFile = New-ScadFile -scadFile $scadFile -includeFiles $includeFiles
+#     Write-Host "New Scad File Created"
 
-    # Write the new content to a new file in the output folder
-    Publish-ScadFile-To-Output -scadFile $newScadFile -outputFolderPath $outputFolderPath
+#     # Write the new content to a new file in the output folder
+#     Publish-ScadFile-To-Output -scadFile $newScadFile -outputFolderPath $outputFolderPath
 
-    Write-Host "Finished Processing file:" $scadFile.Name
-}
+#     Write-Host "Finished Processing file:" $scadFile.Name
+# }
 
-function Publish-ScadFile-To-Output {
-    param (
-        [ScadFile]$scadFile,
-        [string]$outputFolderPath
-    )
+# function Publish-ScadFile-To-Output {
+#     param (
+#         [ScadFile]$scadFile,
+#         [string]$outputFolderPath
+#     )
 
-    $repoRoot = (Get-Location).Path
-    $filePath = $scadFile.Path
+#     $repoRoot = (Get-Location).Path
+#     $filePath = $scadFile.Path
     
-    # Ensure the file path is absolute
-    if (-not (Test-Path -Path $filePath -PathType Leaf)) {
-        $filePath = Join-Path -Path $repoRoot -ChildPath $filePath
-    }
+#     # Ensure the file path is absolute
+#     if (-not (Test-Path -Path $filePath -PathType Leaf)) {
+#         $filePath = Join-Path -Path $repoRoot -ChildPath $filePath
+#     }
 
-    if ($filePath.Length -le $repoRoot.Length) {
-        Write-Error "The file path is shorter than or equal to the repository root path."
-        return
-    }
+#     if ($filePath.Length -le $repoRoot.Length) {
+#         Write-Error "The file path is shorter than or equal to the repository root path."
+#         return
+#     }
 
-    # Calculate the relative path from the repository root
-    $relativePath = $filePath.Substring($repoRoot.Length).TrimStart('\', '/')
-    $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $relativePath
-    Write-Host "Publishing file to: $outputFilePath"
+#     # Calculate the relative path from the repository root
+#     $relativePath = $filePath.Substring($repoRoot.Length).TrimStart('\', '/')
+#     $outputFilePath = Join-Path -Path $outputFolderPath -ChildPath $relativePath
+#     Write-Host "Publishing file to: $outputFilePath"
 
-    # Ensure the directory for the output file exists
-    $outputDirectory = Split-Path -Path $outputFilePath -Parent
-    if (-not (Test-Path -Path $outputDirectory)) {
-        New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
-    }
+#     # Ensure the directory for the output file exists
+#     $outputDirectory = Split-Path -Path $outputFilePath -Parent
+#     if (-not (Test-Path -Path $outputDirectory)) {
+#         New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+#     }
 
-    # Write the new content to the output file
-    Set-Content -Path $outputFilePath -Value $scadFile.Content -Force
-}
+#     # Write the new content to the output file
+#     Set-Content -Path $outputFilePath -Value $scadFile.Content -Force
+# }
 
-function New-ScadFile {
-    param (
-        [ScadFile]$scadFile,
-        [Include[]]$includeFiles
-    )
+# function New-ScadFile {
+#     param (
+#         [ScadFile]$scadFile,
+#         [Include[]]$includeFiles
+#     )
 
-    if ($scadFile.Imports.Count -eq 0) {
-        Write-Host "No imports found for $($scadFile.Name). Returning original content."
-        $scadFile.IsProcessed = $true
-        return $scadFile
-    }
+#     if ($scadFile.Imports.Count -eq 0) {
+#         Write-Host "No imports found for $($scadFile.Name). Returning original content."
+#         $scadFile.IsProcessed = $true
+#         return $scadFile
+#     }
 
-    $newContent = $scadFile.Content
+#     $newContent = $scadFile.Content
 
-    # Remove the include line from the content of the ScadFile where the include was found only if the include has content
-    foreach ($import in $scadFile.Imports) {
-        if ($import.Content) {
+#     # Remove the include line from the content of the ScadFile where the include was found only if the include has content
+#     foreach ($import in $scadFile.Imports) {
+#         if ($import.Content) {
             
-            if ($import.Type -eq [ImportType]::Include) {
-                $pattern = "include\s+<($($import.Name))>\s*(\r?\n|\r)?"
-                $replacement = "`n`n// === Include: $($import.Name) === `n`n$($import.Content)`n`n// === End Include: $($import.Name) ===`n`n"
-            }
-            elseif ($import.Type -eq [ImportType]::Use) {
-                $pattern = "use\s+<($($import.Name))>\s*(\r?\n|\r)?"
-                # for use, only need to add the content of modules and functions
-                $moduleContent = $import.Modules | ForEach-Object { $_.Content } -join "`n"
-                $functionContent = $import.Functions | ForEach-Object { $_.Content } -join "`n"
-                $replacement = "`n`n// === Use: $($import.Name) === `n`n$($moduleContent)`n`n$($functionContent)`n`n// === End Use: $($import.Name) ===`n`n"
-            }
-            else {
-                Write-Warning "Unknown import type: $($import.Type)"
-                continue
-            }
+#             if ($import.Type -eq [ImportType]::Include) {
+#                 $pattern = "include\s+<($($import.Name))>\s*(\r?\n|\r)?"
+#                 $replacement = "`n`n// === Include: $($import.Name) === `n`n$($import.Content)`n`n// === End Include: $($import.Name) ===`n`n"
+#             }
+#             elseif ($import.Type -eq [ImportType]::Use) {
+#                 $pattern = "use\s+<($($import.Name))>\s*(\r?\n|\r)?"
+#                 # for use, only need to add the content of modules and functions
+#                 $moduleContent = $import.Modules | ForEach-Object { $_.Content } -join "`n"
+#                 $functionContent = $import.Functions | ForEach-Object { $_.Content } -join "`n"
+#                 $replacement = "`n`n// === Use: $($import.Name) === `n`n$($moduleContent)`n`n$($functionContent)`n`n// === End Use: $($import.Name) ===`n`n"
+#             }
+#             else {
+#                 Write-Warning "Unknown import type: $($import.Type)"
+#                 continue
+#             }
             
-            # Replace include statement with actual content, preserving the structure
-            $newContent = $newContent -replace $pattern, $replacement
-        }
-    }
+#             # Replace include statement with actual content, preserving the structure
+#             $newContent = $newContent -replace $pattern, $replacement
+#         }
+#     }
 
-    $scadFile.Content = $newContent
-    $scadFile.IsProcessed = $true
+#     $scadFile.Content = $newContent
+#     $scadFile.IsProcessed = $true
 
-    return $scadFile
-}
+#     return $scadFile
+# }
 
-function Read-ImportsFromScadFile {
-    param (
-        [ScadFile]$scadFile
-        # ,
-        # [ImportType]$type
-    )
+# function Read-ImportsFromScadFile {
+#     param (
+#         [ScadFile]$scadFile
+#         # ,
+#         # [ImportType]$type
+#     )
 
-    $scadDirectory = Split-Path -Path $scadFile.Path
+#     $scadDirectory = Split-Path -Path $scadFile.Path
 
-    $importArrary = @()
+#     $importArrary = @()
 
-    foreach ($import in $scadFile.Imports) {
-        $processingImport = $import
-        try {
-            $found = Find-File -directory $scadDirectory -fileName $processingImport.Name
+#     foreach ($import in $scadFile.Imports) {
+#         $processingImport = $import
+#         try {
+#             $found = Find-File -directory $scadDirectory -fileName $processingImport.Name
 
-            if ($found) {
-                Write-Verbose "Found include file: $import.Name at $($found.FullName)"
+#             if ($found) {
+#                 Write-Verbose "Found include file: $import.Name at $($found.FullName)"
 
-                $foundImport = New-Object Import -ArgumentList @($import.Name, $import.Type)
+#                 $foundImport = New-Object Import -ArgumentList @($import.Name, $import.Type)
 
-                $foundImport.Path = $found.FullName
-                $foundImport.Content = Get-Content -Path $found.FullName -Raw
-                $foundImport.Modules = Get-ModulesFromFile -filePath $found.FullName
-                if (-not $foundImport.Modules) {
-                    $foundImport.Modules = @()
-                }
-                $foundImport.Functions = Get-FunctionsFromFile -filePath $found.FullName
-                if (-not $foundImport.Functions) {
-                    $foundImport.Functions = @()
-                }
+#                 $foundImport.Path = $found.FullName
+#                 $foundImport.Content = Get-Content -Path $found.FullName -Raw
+#                 $foundImport.Modules = Get-ModulesFromFile -filePath $found.FullName
+#                 if (-not $foundImport.Modules) {
+#                     $foundImport.Modules = @()
+#                 }
+#                 $foundImport.Functions = Get-FunctionsFromFile -filePath $found.FullName
+#                 if (-not $foundImport.Functions) {
+#                     $foundImport.Functions = @()
+#                 }
 
-                $importArrary += $foundImport
-            }
-        } catch {
-            Write-Warning "Could not read file: $($import.Name) . $_"
-        }
-    }
+#                 $importArrary += $foundImport
+#             }
+#         } catch {
+#             Write-Warning "Could not read file: $($import.Name) . $_"
+#         }
+#     }
 
-    return $importArrary
-}
+#     return $importArrary
+# }
 
-function Read-IncludeFiles {
-    param (
-        [ScadFile]$scadFile
-    )
+# function Read-IncludeFiles {
+#     param (
+#         [ScadFile]$scadFile
+#     )
 
-    $scadDirectory = Split-Path -Path $scadFile.Path
+#     $scadDirectory = Split-Path -Path $scadFile.Path
 
-    $includeArrary = @()
+#     $includeArrary = @()
 
-    foreach ($includeName in $scadFile.Includes) {
-        try {
-            $found = Find-File -directory $scadDirectory -fileName $includeName
+#     foreach ($includeName in $scadFile.Includes) {
+#         try {
+#             $found = Find-File -directory $scadDirectory -fileName $includeName
 
-            if ($found) {
-                Write-Verbose "Found include file: $includeName at $($found.FullName)"
+#             if ($found) {
+#                 Write-Verbose "Found include file: $includeName at $($found.FullName)"
 
-                # Create and populate an Include object
-                $include = New-Object Include -ArgumentList $includeName
-                $include.Path = $found.FullName
-                $include.Content = Get-Content -Path $found.FullName -Raw
-                $include.Modules = Get-ModulesFromFile -filePath $include.Path
-                $include.Functions = Get-FunctionsFromFile -filePath $include.Path
-                $include.Type = [ImportType]::Include
+#                 # Create and populate an Include object
+#                 $include = New-Object Include -ArgumentList $includeName
+#                 $include.Path = $found.FullName
+#                 $include.Content = Get-Content -Path $found.FullName -Raw
+#                 $include.Modules = Get-ModulesFromFile -filePath $include.Path
+#                 $include.Functions = Get-FunctionsFromFile -filePath $include.Path
+#                 $include.Type = [ImportType]::Include
 
-                $includeArrary += $include
-            }
-        } catch {
-            Write-Warning "Could not read file: $includeName. $_"
-        }
-    }
+#                 $includeArrary += $include
+#             }
+#         } catch {
+#             Write-Warning "Could not read file: $includeName. $_"
+#         }
+#     }
 
-    return $includeArrary
-}
+#     return $includeArrary
+# }
 
-function Find-File {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$directory,
-        [Parameter(Mandatory = $true)]
-        [string]$fileName
-    )
+# function Find-File {
+#     param (
+#         [Parameter(Mandatory = $true)]
+#         [string]$directory,
+#         [Parameter(Mandatory = $true)]
+#         [string]$fileName
+#     )
 
-        # Define search locations
-        $searchLocations = @(
-            # Same folder as the file
-            $directory,
+#         # Define search locations
+#         $searchLocations = @(
+#             # Same folder as the file
+#             $directory
+#         )
+
+#         # Add subfolders within the current folder (recursive)
+#         $subfolders = Get-ChildItem -Path $directory -Directory -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+#         $searchLocations += $subfolders
+
+#          # Add sibling folders in the same parent directory
+#         $parentDirectory = Split-Path -Path $directory -Parent
+#         if ($parentDirectory) {
+#             $siblingFolders = Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+#             $searchLocations += $siblingFolders
+#         }
     
-            # Subfolders within the current folder (recursive)
-            (Get-ChildItem -Path $directory -Directory -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
+#         try {
+#             foreach ($location in $searchLocations) {
+#                 # Skip null or invalid paths
+#                 if (-not $location -or -not (Test-Path -Path $location)) {
+#                     continue
+#                 }
     
-            # Sibling folders in the same parent directory
-            (Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }),
+#                 # Search for the file in the current location
+#                 $found = Get-ChildItem -Path $location -Filter $fileName -File -ErrorAction SilentlyContinue |
+#                          Select-Object -First 1
     
-            # Repository root
-            (Get-PSDrive -Name ((Get-Item -Path $directory).PSDrive.Name)).Root
-        )
+#                 if ($found) {
+#                     Write-Verbose "Found file: $fileName at $($found.FullName)"
+#                     return $found
+#                 }
+#             }
     
-        try {
-            foreach ($location in $searchLocations) {
-                # Skip null or invalid paths
-                if (-not $location -or -not (Test-Path -Path $location)) {
-                    continue
-                }
-    
-                # Search for the file in the current location
-                $found = Get-ChildItem -Path $location -Filter $fileName -File -ErrorAction SilentlyContinue |
-                         Select-Object -First 1
-    
-                if ($found) {
-                    Write-Verbose "Found file: $fileName at $($found.FullName)"
-                    return $found
-                }
-            }
-    
-            # Log a warning if the file was not found
-            Write-Warning "No file found for: $fileName"
-            return $null
-        }
-        catch {
-            # Handle unexpected errors
-            Write-Warning "Error searching for include file '$includeFileName': $_"
-            return $null
-        }
-}
+#             # Log a warning if the file was not found
+#             Write-Warning "No file found for: $fileName"
+#             return $null
+#         }
+#         catch {
+#             # Handle unexpected errors
+#             Write-Warning "Error searching for include file '$includeFileName': $_"
+#             return $null
+#         }
+# }
 
-function Get-Includes-From-ScadFile {
-    param (
-        [ScadFile]$scadFile
-    )
+# function Get-Includes-From-ScadFile {
+#     param (
+#         [ScadFile]$scadFile
+#     )
 
-    $includeArray = @()
+#     $includeArray = @()
 
-     # Split content into lines and find all matches
-    $includeMatches = $scadFile.Content | Select-String -Pattern 'include\s+<(.+?)>' -AllMatches
+#      # Split content into lines and find all matches
+#     $includeMatches = $scadFile.Content | Select-String -Pattern 'include\s+<(.+?)>' -AllMatches
 
-    # Extract each match
-    foreach ($match in $includeMatches) {
-        foreach ($group in $match.Matches) {
-            # Add the include to the array of includes. create an Include object with the name of the include
-            $includeName = $group.Groups[1].Value
-            # Add the include to the array of includes
-            $includeArray += $includeName
-        }
-    }
+#     # Extract each match
+#     foreach ($match in $includeMatches) {
+#         foreach ($group in $match.Matches) {
+#             # Add the include to the array of includes. create an Include object with the name of the include
+#             $includeName = $group.Groups[1].Value
+#             # Add the include to the array of includes
+#             $includeArray += $includeName
+#         }
+#     }
 
-    Write-Verbose "Total includes found: $($includeArray.Count)"
-    return $includeArray
-}
+#     Write-Verbose "Total includes found: $($includeArray.Count)"
+#     return $includeArray
+# }
 
-function Get-Imports-From-ScadFile {
-    param (
-        [ScadFile]$scadFile,
-        [ImportType]$type
-    )
+# function Get-Imports-From-ScadFile {
+#     param (
+#         [ScadFile]$scadFile,
+#         [ImportType]$type
+#     )
 
-    $importArray = @()
+#     $importArray = @()
 
-     # Split content into lines and find all matches
-    $includeMatches = $scadFile.Content | Select-String -Pattern "$($type.ToString().ToLower())\s+<(.+?)>" -AllMatches
+#      # Split content into lines and find all matches
+#     $includeMatches = $scadFile.Content | Select-String -Pattern "$($type.ToString().ToLower())\s+<(.+?)>" -AllMatches
 
-    # Extract each match
-    foreach ($match in $includeMatches) {
-        foreach ($group in $match.Matches) {
-            # Add the include to the array of includes. create an Include object with the name of the include
-            $includeName = $group.Groups[1].Value
+#     # Extract each match
+#     foreach ($match in $includeMatches) {
+#         foreach ($group in $match.Matches) {
+#             # Add the include to the array of includes. create an Include object with the name of the include
+#             $includeName = $group.Groups[1].Value
 
-            $import = New-Object Import -ArgumentList @($includeName, $type)
+#             $import = New-Object Import -ArgumentList @($includeName, $type)
 
-            # Add the include to the array of includes
-            $importArray += $import
-        }
-    }
+#             # Add the include to the array of includes
+#             $importArray += $import
+#         }
+#     }
 
-    Write-Verbose "Total $($type) found: $($importArray.Count)"
-    return $importArray
-}
+#     Write-Verbose "Total $($type) found: $($importArray.Count)"
+#     return $importArray
+# }
 
-function Get-LogicParts-From-ScadFileContent {
-    param (
-        [string]$Content,
-        [LogicType]$Type
-    )
+# function Get-LogicParts-From-ScadFileContent {
+#     param (
+#         [string]$Content,
+#         [LogicType]$Type
+#     )
 
-    $logicArrary = @()
-    $currentLogic = $null
-    $currentContent = @()
+#     $logicArrary = @()
+#     $currentLogic = $null
+#     $currentContent = @()
 
-    if ($Type -eq [LogicType]::Module) {
-        $regex = 'module\s+(\w+)\s*\('
-    }
-    elseif ($type -eq [LogicType]::Function) {
-        $regex = 'function\s+(\w+)\s*\('
-    }
-    else {
-        Write-Warning "Unknown logic type: $Type"
-        return $logicArrary
-    }
+#     if ($Type -eq [LogicType]::Module) {
+#         $regex = 'module\s+(\w+)\s*\('
+#     }
+#     elseif ($type -eq [LogicType]::Function) {
+#         $regex = 'function\s+(\w+)\s*\('
+#     }
+#     else {
+#         Write-Warning "Unknown logic type: $Type"
+#         return $logicArrary
+#     }
 
-    foreach ($line in $Content) {
-        if ($line -match $regex) {
-            if ($currentLogic) {
-                $logicArrary += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $Type
-            }
-            $currentLogic = $matches[1]
-            $currentContent = @($line)
-        } elseif ($currentLogic) {
-            $currentContent += $line
-        }
-    }
+#     foreach ($line in $Content) {
+#         if ($line -match $regex) {
+#             if ($currentLogic) {
+#                 $logicArrary += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $Type
+#             }
+#             $currentLogic = $matches[1]
+#             $currentContent = @($line)
+#         } elseif ($currentLogic) {
+#             $currentContent += $line
+#         }
+#     }
 
-    if ($currentLogic) {
-        $modules += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $Type
-    }
+#     if ($currentLogic) {
+#         $modules += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $Type
+#     }
 
-    return $logicArrary
-}
+#     return $logicArrary
+# }
 
-function Get-ModulesFromFile {
-    param (
-        [string]$filePath
-    )
+# function Get-ModulesFromFile {
+#     param (
+#         [string]$filePath
+#     )
 
-    $modules = @()
-    $currentModule = $null
-    $currentContent = @()
+#     $modules = @()
+#     $currentModule = $null
+#     $currentContent = @()
 
-    foreach ($line in Get-Content -Path $filePath) {
-        if ($line -match 'module\s+(\w+)\s*\(') {
-            if ($currentModule) {
-                $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
-            }
-            $currentModule = $matches[1]
-            $currentContent = @($line)
-        } elseif ($currentModule) {
-            $currentContent += $line
-        }
-    }
+#     foreach ($line in Get-Content -Path $filePath) {
+#         if ($line -match 'module\s+(\w+)\s*\(') {
+#             if ($currentModule) {
+#                 $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
+#             }
+#             $currentModule = $matches[1]
+#             $currentContent = @($line)
+#         } elseif ($currentModule) {
+#             $currentContent += $line
+#         }
+#     }
 
-    if ($currentModule) {
-        $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
-    }
+#     if ($currentModule) {
+#         $modules += New-Object Logic -ArgumentList $currentModule, ($currentContent -join "`n"), Module
+#     }
 
-    if (-not $modules) {
-        return @()
-    }
-    return $modules
-}
+#     if (-not $modules) {
+#         return @()
+#     }
+#     return $modules
+# }
 
-function Get-FunctionsFromFile {
-    param (
-        [string]$filePath
-    )
+# function Get-FunctionsFromFile {
+#     param (
+#         [string]$filePath
+#     )
 
-    $functions = @()
-    $currentFunction = $null
-    $currentContent = @()
+#     $functions = @()
+#     $currentFunction = $null
+#     $currentContent = @()
 
-    foreach ($line in Get-Content -Path $filePath) {
-        if ($line -match 'function\s+(\w+)\s*\(') {
-            if ($currentFunction) {
-                $functionObject = New-Object Logic -ArgumentList $currentFunction, ($currentContent -join "`n"), Function
-                $functions += $functionObject
-            }
-            $currentFunction = $matches[1]
-            $currentContent = @($line)
-        } elseif ($currentFunction) {
-            $currentContent += $line
-        }
-    }
+#     foreach ($line in Get-Content -Path $filePath) {
+#         if ($line -match 'function\s+(\w+)\s*\(') {
+#             if ($currentFunction) {
+#                 $functionObject = New-Object Logic -ArgumentList $currentFunction, ($currentContent -join "`n"), Function
+#                 $functions += $functionObject
+#             }
+#             $currentFunction = $matches[1]
+#             $currentContent = @($line)
+#         } elseif ($currentFunction) {
+#             $currentContent += $line
+#         }
+#     }
 
-    if ($currentFunction) {
-        $functionObject = New-Object Logic -ArgumentList $currentFunction, ($currentContent -join "`n"), Function
-        $functions += $functionObject
-    }
+#     if ($currentFunction) {
+#         $functionObject = New-Object Logic -ArgumentList $currentFunction, ($currentContent -join "`n"), Function
+#         $functions += $functionObject
+#     }
 
-    return $functions
-}
+#     return $functions
+# }
 
-function Test-FolderExists {
-    param (
-        [string]$folderPath
-    )
-    if (-not (Test-Path -Path $folderPath)) {
-        New-Item -ItemType Directory -Path $folderPath | Out-Null
-    }
-}
 
-# Main script logic
 
-# Set default output folder path if not provided
-if (-not $outputFolderPath) {
-    $repoRoot = (Get-Location).Path
-    $outputFolderPath = Join-Path -Path $repoRoot -ChildPath "output"
-    Write-Host "Output folder path not provided. Using default: $outputFolderPath"
-}
+# # Main script logic
 
-# Ensure the output folder exists
-if (-not (Test-Path -Path $outputFolderPath)) {
-    New-Item -ItemType Directory -Path $outputFolderPath | Out-Null
-    Write-Host "Created output folder: $outputFolderPath"
-}
+# # Set default output folder path if not provided
+# if (-not $outputFolderPath) {
+#     $repoRoot = (Get-Location).Path
+#     $outputFolderPath = Join-Path -Path $repoRoot -ChildPath "output"
+#     Write-Host "Output folder path not provided. Using default: $outputFolderPath"
+# }
 
-if (-not $pathArray -or $pathArray.Count -eq 0) {
-    Write-Error "No paths provided to process."
-    exit 1
-}
+# # Ensure the output folder exists
+# if (-not (Test-Path -Path $outputFolderPath)) {
+#     New-Item -ItemType Directory -Path $outputFolderPath | Out-Null
+#     Write-Host "Created output folder: $outputFolderPath"
+# }
 
-# Check if the path is a file or a folder
-Write-Host "Processing Files: $($pathArray -join ', ')"
+# if (-not $pathArray -or $pathArray.Count -eq 0) {
+#     Write-Error "No paths provided to process."
+#     exit 1
+# }
 
-foreach ($path in $pathArray) {
-    if ([string]::IsNullOrWhiteSpace($path)) {
-        Write-Warning "Skipping empty path."
-        continue
-    }
+# # Check if the path is a file or a folder
+# Write-Host "Processing Files: $($pathArray -join ', ')"
 
-    if (Test-Path $path) {
-        if (Test-Path $path -PathType Leaf) {
-            Write-Host "Processing file: $path"
-            Invoke-ProcessScadFile -filePath $path -outputFolderPath $outputFolderPath
-        } elseif (Test-Path $path -PathType Container) {
-            Write-Host "Processing folder: $path"
-            Invoke-ProcessScadFilesInFolder -folderPath $path -outputFolderPath $outputFolderPath
-        } else {
-            Write-Warning "The path is neither a valid file or a folder: $path"
-        }
-    } else {
-        Write-Warning "The provided path does not exist: $path"
-    }
-}
+# foreach ($path in $pathArray) {
+#     if ([string]::IsNullOrWhiteSpace($path)) {
+#         Write-Warning "Skipping empty path."
+#         continue
+#     }
+
+#     if (Test-Path $path) {
+#         if (Test-Path $path -PathType Leaf) {
+#             Write-Host "Processing file: $path"
+#             Invoke-ProcessScadFile -filePath $path -outputFolderPath $outputFolderPath
+#         } elseif (Test-Path $path -PathType Container) {
+#             Write-Host "Processing folder: $path"
+#             Invoke-ProcessScadFilesInFolder -folderPath $path -outputFolderPath $outputFolderPath
+#         } else {
+#             Write-Warning "The path is neither a valid file or a folder: $path"
+#         }
+#     } else {
+#         Write-Warning "The provided path does not exist: $path"
+#     }
+# }
