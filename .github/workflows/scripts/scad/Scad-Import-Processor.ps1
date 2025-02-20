@@ -105,9 +105,13 @@ function Invoke-ProcessScadFilesInFolder {
     )
 
     $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse
-    $scadFiles | ForEach-Object -Parallel {
-        Invoke-ProcessScadFile -filePath $_.FullName -outputFolderPath $using:outputFolderPath
+    foreach ($scadFile in $scadFiles) {
+        Invoke-ProcessScadFile -filePath $scadFile.FullName -outputFolderPath $outputFolderPath
     }
+    # not sure if this needs to be run parallel
+    # $scadFiles | ForEach-Object -Parallel {
+    #     Invoke-ProcessScadFile -filePath $_.FullName -outputFolderPath $using:outputFolderPath
+    # }
 }
 
 function Invoke-ProcessScadFile {
