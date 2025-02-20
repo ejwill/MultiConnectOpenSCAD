@@ -55,7 +55,7 @@ jobs:
         run: |
             $pathArray = $env:UNDERWARE_ALL_CHANGED_FILES.Split(',')
             Write-Host "Processing SCAD files: $pathArray"
-            ./.github/workflows/scripts/scad/scad-include-processor.ps1 -pathArray $pathArray
+            ./.github/workflows/scripts/scad/Scad-Import-Processor.ps1 -pathArray $pathArray
 
       # Upload the /underware folder as an artifact. Run only if process-scad has run
       - name: Upload Scad Output folder
