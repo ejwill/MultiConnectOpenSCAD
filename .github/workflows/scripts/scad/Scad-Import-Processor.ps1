@@ -290,6 +290,58 @@ function Get-ImportDetails {
     return $importArray
 }
 
+function Find-File {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$directory,
+        [Parameter(Mandatory = $true)]
+        [string]$fileName
+    )
+
+    # Validate directory
+    if (-not (Test-Path -Path $directory -PathType Container)) {
+        Write-Warning "The directory '$directory' does not exist or is not a directory."
+        return $null
+    }
+    if ([string]::IsNullOrWhiteSpace($fileName)) {
+        Write-Warning "The file name cannot be null or empty."
+        return $null
+    }
+
+    try {
+        # Define search paths: current directory, subdirectories, and sibling directories
+        $searchPaths = @($directory)
+        
+        # Add subdirectories recursively (if any)
+        $subfolders = Get-ChildItem -Path $directory -Directory -Recurse -ErrorAction SilentlyContinue
+        $searchPaths += $subfolders.FullName
+
+        # Add sibling directories
+        $parentDirectory = Split-Path -Path $directory -Parent
+        if ($parentDirectory) {
+            $siblingFolders = Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue
+            $searchPaths += $siblingFolders.FullName
+        }
+
+        # Search for the file in the gathered directories
+        foreach ($path in $searchPaths) {
+            $found = Get-ChildItem -Path $path -Filter $fileName -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+                Write-Verbose "Found file: $($found.FullName)"
+                return $found
+            }
+        }
+        
+        Write-Warning "No file found for: $fileName"
+        return $null
+    }
+    catch {
+        Write-Warning "Error searching for file '$fileName': $_"
+        return $null
+    }
+}
+
+
 # TODO: Handle recursive imports
 function Expand-ScadFileImports {
     [CmdletBinding()]
