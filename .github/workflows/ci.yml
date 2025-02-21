@@ -49,22 +49,26 @@ jobs:
       - name: Check for imports
         id: check-imports
         if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        shell: pwsh
         run: |
           echo "Checking for imports"
-          ./.github/workflows/scripts/scad/Scad-Import-Checker.ps1 -pathArray ${{ steps.changed-files.outputs.all_changed_files }}
+          $pathArray = $env:ALL_CHANGED_FILES.Split(',')
+          ./.github/workflows/scripts/scad/Find-ScadFile-References.ps1 -libraryFilePaths $pathArray
 
       # Run the include processor script
       - name: Process SCAD
         id: process-scad
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
-          UNDERWARE_ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
           REFERENCING_FILES_LIST: ${{steps.check-imports.outputs.referencing_files_list}}
         shell: pwsh
         run: |
             $referencingFilesArray = $env:REFERENCING_FILES_LIST.Split(',')
-            $pathArray = $env:UNDERWARE_ALL_CHANGED_FILES.Split(',')
-            
+            $pathArray = $env:ALL_CHANGED_FILES.Split(',')
+
             $pathArray += $referencingFilesArray
             $pathArray = $pathArray | Sort-Object -Unique
 
