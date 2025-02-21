@@ -66,7 +66,10 @@ jobs:
           REFERENCING_FILES_LIST: ${{steps.check-imports.outputs.referencing_files_list}}
         shell: pwsh
         run: |
-            $referencingFilesArray = $env:REFERENCING_FILES_LIST.Split(',')
+            $referencingFilesArray = @()
+            if ($env:REFERENCING_FILES_LIST -ne "") {
+              $referencingFilesArray = $env:REFERENCING_FILES_LIST.Split(',')
+            }
             Write-Host "Referencing files: $referencingFilesArray"
             $pathArray = $env:ALL_CHANGED_FILES.Split(',')
             Write-Host "Changed files: $pathArray"
@@ -76,8 +79,12 @@ jobs:
             $pathArray = $pathArray | Sort-Object -Unique
             Write-host "Unique array: $pathArray"
 
-            Write-Host "Processing SCAD files: $pathArray"
-            ./.github/workflows/scripts/scad/Scad-Import-Processor.ps1 -pathArray $pathArray
+            if ($pathArray.Length -gt 0) {
+              Write-Host "Processing SCAD files: $pathArray"
+              ./.github/workflows/scripts/scad/Scad-Import-Processor.ps1 -pathArray $pathArray
+            } else {
+              Write-Host "No SCAD files to process"
+            }
 
       # Commit the changes
       - name: Commit changes
