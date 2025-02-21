@@ -64,6 +64,6 @@ foreach ($libraryFilePath in $libraryFilePaths) {
     # Set output for GitHub Actions
     if ($isGitHubActions) {
         $referencingFilesString = $referencingFiles -join ","
-        Write-Output "::set-output name=referencing_files::$referencingFilesString"
+        "referencing_files_list=$referencingFilesString" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
     }
 }
