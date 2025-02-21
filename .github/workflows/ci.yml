@@ -14,10 +14,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
     steps:
       # Checkout the repository
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0  # Ensure full repository content is fetched
 
       # Debug: List repository contents
