@@ -67,10 +67,14 @@ jobs:
         shell: pwsh
         run: |
             $referencingFilesArray = $env:REFERENCING_FILES_LIST.Split(',')
+            Write-Host "Referencing files: $referencingFilesArray"
             $pathArray = $env:ALL_CHANGED_FILES.Split(',')
+            Write-Host "Changed files: $pathArray"
 
             $pathArray += $referencingFilesArray
+            Write-host "Combined array: $pathArray"
             $pathArray = $pathArray | Sort-Object -Unique
+            Write-host "Unique array: $pathArray"
 
             Write-Host "Processing SCAD files: $pathArray"
             ./.github/workflows/scripts/scad/Scad-Import-Processor.ps1 -pathArray $pathArray
