@@ -24,7 +24,7 @@ include <BOSL2/rounding.scad>
 include <BOSL2/threading.scad>
 
 
-// === Include: library/Underware-Shared-Profiles.scad === 
+// === Include: lib/Underware-Shared-Profiles.scad === 
 
 //BEGIN PROFILES - Must match across all files
 
@@ -130,7 +130,7 @@ function topDeleteProfileHalf(heightMM = 12)=
 function maxX(path) = max([for (p = path) p[0]]) + abs(min([for (p = path) p[0]]));
 function maxY(path) = max([for (p = path) p[1]]) + abs(min([for (p = path) p[1]]));
 
-// === End Include: library/Underware-Shared-Profiles.scad ===
+// === End Include: lib/Underware-Shared-Profiles.scad ===
 
 /*[Choose Part]*/
 Base_Top_or_Both = "Both"; // [Base, Top, Both]
