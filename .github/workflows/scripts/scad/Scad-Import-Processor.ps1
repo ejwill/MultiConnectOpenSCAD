@@ -30,8 +30,8 @@ class ScadFile {
     [string]$Name
     [bool]$IsProcessed
     [Import[]]$Imports
-    [Import[]]$Includes
-    [Import[]]$Uses
+    # [Import[]]$Includes
+    # [Import[]]$Uses
     [Logic[]]$Modules
     [Logic[]]$Functions
 
@@ -45,8 +45,8 @@ class ScadFile {
         $this.Name = Split-Path $path -Leaf
         $this.IsProcessed = $false
         $this.Imports = @()
-        $this.Includes = @()
-        $this.Uses = @()
+        # $this.Includes = @()
+        # $this.Uses = @()
         $this.Modules = @()
         $this.Functions = @()
     }
@@ -178,11 +178,11 @@ function Get-LogicPartsFromScadContent {
     $currentContent = @()
     $type = $null
 
-    $moduleRegex = '^\s*module\s+(\w+)\s*\('
-    $functionRegex = '^\s*function\s+(\w+)\s*\('
+    # $moduleRegex = '^\s*module\s+(\w+)\s*\('
+    # $functionRegex = '^\s*function\s+(\w+)\s*\('
 
-    # $moduleRegex = '(?i)module\s+(\w+)\s*\('
-    # $functionRegex = '(?i)function\s+(\w+)\s*\('
+    $moduleRegex = '(?i)module\s+(\w+)\s*\('
+    $functionRegex = '(?i)function\s+(\w+)\s*\('
 
     foreach ($line in $Content) {
         if ($line -match $moduleRegex) {
@@ -246,6 +246,7 @@ function Get-ImportsFromScadFile {
         foreach ($match in $regexMatches) {
             foreach ($group in $match.Matches) {
                 $importName = $group.Groups[1].Value
+                $importName = $importName -replace '^\.\./', ''
                 $import = New-Object Import -ArgumentList @($importName, $type)
                 $importArray += $import
             }
@@ -363,11 +364,11 @@ function Expand-ScadFileImports {
         if ($import.Content) {
             
             if ($import.Type -eq [ImportType]::Include) {
-                $pattern = "(?i)include\s+<($($import.Name))>\s*(\r?\n|\r)?"
+                $pattern = "(?i)include\s+<(\.\./)*($($import.Name))>\s*(\r?\n|\r)?"
                 $replacement = "`n`n// === Include: $($import.Name) === `n`n$($import.Content)`n`n// === End Include: $($import.Name) ===`n`n"
             }
             elseif ($import.Type -eq [ImportType]::Use) {
-                $pattern = "(?i)use\s+<($($import.Name))>\s*(\r?\n|\r)?"
+                $pattern = "(?i)use\s+<(\.\./)*($($import.Name))>\s*(\r?\n|\r)?"
                 # for use, only need to add the content of modules and functions
                 $moduleContent = $import.Modules | ForEach-Object { $_.Content } -join "`n"
                 $functionContent = $import.Functions | ForEach-Object { $_.Content } -join "`n"
