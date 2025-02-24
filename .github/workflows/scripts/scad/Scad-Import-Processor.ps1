@@ -11,6 +11,8 @@ param (
 $VerbosePreference = 'Continue'
 $DEFAULT_OUTPUT_FOLDER = "output"
 
+$global:ProcessedFiles = @{}  # Track processed files globally
+
 enum ImportType {
     Unknown
     Include
@@ -105,14 +107,15 @@ function Invoke-ProcessScadFilesInFolder {
         [string]$outputFolderPath
     )
 
-    $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse
+    $scadFiles = Get-ChildItem -Path $folderPath -Filter "*.scad" -Recurse -ErrorAction SilentlyContinue
+    if (-not $scadFiles) {
+        Write-Warning "No .scad files found in: $folderPath"
+        return
+    }
+
     foreach ($scadFile in $scadFiles) {
         Invoke-ProcessScadFile -filePath $scadFile.FullName -outputFolderPath $outputFolderPath
     }
-    # not sure if this needs to be run parallel
-    # $scadFiles | ForEach-Object -Parallel {
-    #     Invoke-ProcessScadFile -filePath $_.FullName -outputFolderPath $using:outputFolderPath
-    # }
 }
 
 function Invoke-ProcessScadFile {
@@ -179,43 +182,42 @@ function Get-LogicPartsFromScadContent {
     $currentContent = @()
     $type = $null
 
-    # $moduleRegex = '^\s*module\s+(\w+)\s*\('
-    # $functionRegex = '^\s*function\s+(\w+)\s*\('
+    # Ensure regex captures leading spaces (avoiding partial matches)
+    $moduleRegex = '^\s*module\s+(\w+)\s*\((.*?)\)\s*{'
+    $functionRegex = '^\s*function\s+(\w+)\s*\((.*?)\)\s*{' 
 
-    $moduleRegex = '(?i)module\s+(\w+)\s*\('
-    $functionRegex = '(?i)function\s+(\w+)\s*\('
+    # Read content line by line
+    $lines = $Content -split "`r?`n"
 
-    foreach ($line in $Content) {
+    foreach ($line in $lines) {
         if ($line -match $moduleRegex) {
+            # Save previous function/module if we were processing one
             if ($currentLogic) {
                 $logicArray += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $type
             }
-            $currentLogic = $matches[1]
+            # Start new logic block
+            $currentLogic = $matches[1]  # Capture module name
             $currentContent = @($line)
             $type = [LogicType]::Module
         } elseif ($line -match $functionRegex) {
             if ($currentLogic) {
                 $logicArray += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $type
             }
-            $currentLogic = $matches[1]
+            $currentLogic = $matches[1]  # Capture function name
             $currentContent = @($line)
             $type = [LogicType]::Function
         } elseif ($currentLogic) {
+            # Append multi-line content
             $currentContent += $line
         }
     }
 
+    # Save last logic block
     if ($currentLogic) {
         $logicArray += New-Object Logic -ArgumentList $currentLogic, ($currentContent -join "`n"), $type
     }
 
-    $modulesArray = $logicArray | Where-Object { $_.Type -eq [LogicType]::Module }
-    $functionsArray = $logicArray | Where-Object { $_.Type -eq [LogicType]::Function }
-
-    return @{
-        Modules = $modulesArray
-        Functions = $functionsArray
-    }
+    return $logicArray
 }
 
 function Get-ImportsFromScadFile {
@@ -233,23 +235,34 @@ function Get-ImportsFromScadFile {
             continue
         }
     
-        # Determine regex pattern based on import type
-        # Use (?i) to make the pattern case-insensitive
         $pattern = if ($type -eq [ImportType]::Include) {
+            # '^\s*include\s+<(.+?)>\s*(;|\s*)$'  # Matches 'include' with optional semicolon or spaces
             '(?i)include\s+<(.+?)>'
         } elseif ($type -eq [ImportType]::Use) {
             '(?i)use\s+<(.+?)>'
+            # '^\s*use\s+<(.+?)>\s*(;|\s*)$'  # Matches 'use' with optional semicolon or spaces
         } else {
             continue
         }
-    
+
+        # $pattern = if ($type -eq [ImportType]::Include) {
+        #     '^\s*include\s+<([^>]+)>\s*;'
+        # } elseif ($type -eq [ImportType]::Use) {
+        #     '^\s*use\s+<([^>]+)>\s*;'
+        # } else {
+        #     continue
+        # }
+
         $regexMatches = $scadFile.Content | Select-String -Pattern $pattern -AllMatches
         foreach ($match in $regexMatches) {
             foreach ($group in $match.Matches) {
-                $importName = $group.Groups[1].Value
-                $name = $importName -replace '^\.\./', ''
+                $importReference = $group.Groups[1].Value
+                $absolutePath = Resolve-Path -Path (Join-Path -Path (Split-Path $scadFile.Path) -ChildPath $importReference) -ErrorAction SilentlyContinue
+                $name = if ($absolutePath) { Split-Path -Leaf $absolutePath } else { $importReference }
+
                 $import = New-Object Import -ArgumentList @($name, $type)
-                $import.ImportReference = $importName
+                $import.ImportReference = $importReference
+                $import.Path = $absolutePath
                 $importArray += $import
             }
         }
@@ -271,7 +284,7 @@ function Get-ImportDetails {
 
     foreach ($import in $scadFile.Imports) {
         try {
-            $found = Find-File -directory $scadDirectory -fileName $import.Name
+            $found = Find-File -directory $scadDirectory -fileName $import.ImportReference
 
             if ($found) {
                 Write-Verbose "Found include file: $import.Name at $($found.FullName)"
@@ -282,6 +295,7 @@ function Get-ImportDetails {
                 $logicParts = Get-LogicPartsFromScadContent -Content $foundImport.Content
                 $foundImport.Modules = $logicParts.Modules
                 $foundImport.Functions = $logicParts.Functions
+                $foundImport.ImportReference = $import.ImportReference
 
                 $importArray += $foundImport
             }
@@ -301,51 +315,59 @@ function Find-File {
         [string]$fileName
     )
 
-    # Validate directory
     if (-not (Test-Path -Path $directory -PathType Container)) {
-        Write-Warning "The directory '$directory' does not exist or is not a directory."
+        Write-Warning "The directory '$directory' does not exist."
         return $null
     }
     if ([string]::IsNullOrWhiteSpace($fileName)) {
-        Write-Warning "The file name cannot be null or empty."
+        Write-Warning "File name cannot be null or empty."
         return $null
     }
 
-    try {
-        # Define search paths: current directory, subdirectories, and sibling directories
-        $searchPaths = @($directory)
-        
-        # Add subdirectories recursively (if any)
-        $subfolders = Get-ChildItem -Path $directory -Directory -Recurse -ErrorAction SilentlyContinue
-        $searchPaths += $subfolders.FullName
-
-        # Add sibling directories
-        $parentDirectory = Split-Path -Path $directory -Parent
-        if ($parentDirectory) {
-            $siblingFolders = Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue
-            $searchPaths += $siblingFolders.FullName
+    # 1️⃣ Extract `../` occurrences from the file name
+    $parentDir = $directory
+    if ($fileName -match '^(\.\./)+') {
+        $numLevelsUp = ($fileName -split '/').Where({$_ -eq ".."}).Count
+        for ($i = 0; $i -lt $numLevelsUp; $i++) {
+            $parentDir = Split-Path -Path $parentDir -Parent
         }
-
-        # Search for the file in the gathered directories
-        foreach ($path in $searchPaths) {
-            $found = Get-ChildItem -Path $path -Filter $fileName -File -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($found) {
-                Write-Verbose "Found file: $($found.FullName)"
-                return $found
-            }
+        $fileName = $fileName -replace '^(\.\./)+', ''
+    
+        # Ensure the final path is valid
+        $resolvedPath = Join-Path -Path $parentDir -ChildPath $fileName
+        if (-not (Test-Path -Path $resolvedPath -PathType Leaf)) {
+            Write-Warning "Resolved path does not exist: $resolvedPath"
+            return $null
         }
-        
-        Write-Warning "No file found for: $fileName"
-        return $null
     }
-    catch {
-        Write-Warning "Error searching for file '$fileName': $_"
-        return $null
+
+    # 2️⃣ Start with prioritized search paths
+    $searchPaths = @($directory, $parentDir)
+
+    # 3️⃣ Add subdirectories recursively
+    $subdirs = Get-ChildItem -Path $directory -Directory -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+    $searchPaths += $subdirs
+
+    # 4️⃣ Add sibling directories **only if** the file hasn't already been found
+    $parentDirectory = Split-Path -Path $directory -Parent
+    if ($parentDirectory -and -not (Test-Path -Path (Join-Path -Path $parentDirectory -ChildPath $fileName) -PathType Leaf)) {
+        $siblingDirs = Get-ChildItem -Path $parentDirectory -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+        $searchPaths += $siblingDirs
     }
+
+    # 🚀 Now, iterate through paths and find the file
+    foreach ($path in $searchPaths) {
+        $found = Get-ChildItem -Path $path -Filter $fileName -File -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) {
+            Write-Verbose "Found file: $($found.FullName)"
+            return $found
+        }
+    }
+
+    Write-Warning "File not found: $fileName"
+    return $null
 }
 
-
-# TODO: Handle recursive imports
 function Expand-ScadFileImports {
     [CmdletBinding()]
     param (
@@ -361,36 +383,108 @@ function Expand-ScadFileImports {
 
     $newContent = $scadFile.Content
 
-    # Remove the import line from the content of the ScadFile where the import was found only if the import has content
     foreach ($import in $scadFile.Imports) {
+        # 🔴 ADD THIS CHECK TO PREVENT INFINITE LOOP
+        if ($global:ProcessedFiles.ContainsKey($import.Path)) {
+            Write-Verbose "Skipping already processed import: $($import.Name)"
+            continue
+        }
+
         if ($import.Content) {
-            
+            Write-Verbose "Expanding import: $($import.Name)"
+
+            # ✅ Mark file as processed to prevent infinite loops
+            $global:ProcessedFiles[$import.Path] = $true
+
+            # ✅ Recursively process imports in this file
+            $importScadFile = New-Object ScadFile -ArgumentList $import.Path, $import.Content
+            $importScadFile.Imports = Get-ImportsFromScadFile -scadFile $importScadFile
+            $importScadFile = Expand-ScadFileImports -scadFile $importScadFile  # Recursive call
+
+            # Escape the import reference to be used in the regex
+            $escapedImportReference = [Regex]::Escape($import.ImportReference)
+
+            # ✅ Merge content based on type
             if ($import.Type -eq [ImportType]::Include) {
+                # $pattern = "(?s)^\s*include\s+<($escapedImportReference)>\s*"
                 $pattern = "(?i)include\s+<($($import.ImportReference))>\s*(\r?\n|\r)?"
-                $replacement = "`n`n// === Include: $($import.Name) === `n`n$($import.Content)`n`n// === End Include: $($import.Name) ===`n`n"
+                $replacement = "`n// === Include: $($import.Name) === `n$($importScadFile.Content)`n// === End Include: $($import.Name) ===`n"
             }
             elseif ($import.Type -eq [ImportType]::Use) {
+                # $pattern = "^\s*use\s+<($escapedImportReference)>\s*"
                 $pattern = "(?i)use\s+<($($import.ImportReference))>\s*(\r?\n|\r)?"
-                # for use, only need to add the content of modules and functions
-                $moduleContent = $import.Modules | ForEach-Object { $_.Content } -join "`n"
-                $functionContent = $import.Functions | ForEach-Object { $_.Content } -join "`n"
-                $replacement = "`n`n// === Use: $($import.Name) === `n`n$($moduleContent)`n`n$($functionContent)`n`n// === End Use: $($import.Name) ===`n`n"
+                $moduleContent = $importScadFile.Modules | ForEach-Object { $_.Content } -join "`n"
+                $functionContent = $importScadFile.Functions | ForEach-Object { $_.Content } -join "`n"
+                $replacement = "`n// === Use: $($import.Name) === `n$moduleContent`n$functionContent`n// === End Use: $($import.Name) ===`n"
             }
             else {
                 Write-Warning "Unknown import type: $($import.Type)"
                 continue
             }
-            
-            # Replace include statement with actual content, preserving the structure
+
+            $patternMatches = Select-String -InputObject $newContent -Pattern $pattern -AllMatches
+            if ($patternMatches.Count -gt 1) {
+                Write-Warning "Multiple matches found for import: $($import.Name). This may indicate a potential issue."
+            }
+
+            $testMatches = $newContent -match $pattern
+
+            # ✅ Replace the import statement with the expanded content
             $newContent = $newContent -replace $pattern, $replacement
         }
     }
 
     $scadFile.Content = $newContent
     $scadFile.IsProcessed = $true
-
     return $scadFile
 }
+
+# TODO: Handle recursive imports
+# function Expand-ScadFileImports {
+#     [CmdletBinding()]
+#     param (
+#         [Parameter(Mandatory = $true)]
+#         [ScadFile]$scadFile
+#     )
+
+#     if ($scadFile.Imports.Count -eq 0) {
+#         Write-Verbose "No imports found for $($scadFile.Name). Returning original content."
+#         $scadFile.IsProcessed = $true
+#         return $scadFile
+#     }
+
+#     $newContent = $scadFile.Content
+
+#     # Remove the import line from the content of the ScadFile where the import was found only if the import has content
+#     foreach ($import in $scadFile.Imports) {
+#         if ($import.Content) {
+            
+#             if ($import.Type -eq [ImportType]::Include) {
+#                 $pattern = "(?i)include\s+<($($import.ImportReference))>\s*(\r?\n|\r)?"
+#                 $replacement = "`n`n// === Include: $($import.Name) === `n`n$($import.Content)`n`n// === End Include: $($import.Name) ===`n`n"
+#             }
+#             elseif ($import.Type -eq [ImportType]::Use) {
+#                 $pattern = "(?i)use\s+<($($import.ImportReference))>\s*(\r?\n|\r)?"
+#                 # for use, only need to add the content of modules and functions
+#                 $moduleContent = $import.Modules | ForEach-Object { $_.Content } -join "`n"
+#                 $functionContent = $import.Functions | ForEach-Object { $_.Content } -join "`n"
+#                 $replacement = "`n`n// === Use: $($import.Name) === `n`n$($moduleContent)`n`n$($functionContent)`n`n// === End Use: $($import.Name) ===`n`n"
+#             }
+#             else {
+#                 Write-Warning "Unknown import type: $($import.Type)"
+#                 continue
+#             }
+            
+#             # Replace include statement with actual content, preserving the structure
+#             $newContent = $newContent -replace $pattern, $replacement
+#         }
+#     }
+
+#     $scadFile.Content = $newContent
+#     $scadFile.IsProcessed = $true
+
+#     return $scadFile
+# }
 
 function Save-ScadFile {
     [CmdletBinding()]
