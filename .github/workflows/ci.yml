@@ -1,0 +1,110 @@
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  # push:
+  #   branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
+    steps:
+      # Checkout the repository
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0  # Ensure full repository content is fetched
+
+      # Debug: List repository contents
+      - name: List repository contents
+        run: ls -R
+
+      # Get the files that have been changed in the PR
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: '**/*.scad'
+          separator: ','
+          files_ignore: 'output/**'
+          # files_yaml: |
+          #   underware:
+          #     - Underware/**
+
+      - name: List all changed files
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          echo ${ALL_CHANGED_FILES}
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+          done
+
+      # Check if any files changed are imported in other SCAD files
+      - name: Check for imports
+        id: check-imports
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        shell: pwsh
+        run: |
+          echo "Checking for imports"
+          $pathArray = $env:ALL_CHANGED_FILES.Split(',')
+          ./.github/workflows/scripts/scad/Find-ScadFile-References.ps1 -libraryFilePaths $pathArray
+
+      # Run the include processor script
+      - name: Process SCAD
+        id: process-scad
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          REFERENCING_FILES_LIST: ${{steps.check-imports.outputs.referencing_files_list}}
+        shell: pwsh
+        run: |
+            $referencingFilesArray = @()
+            if ($env:REFERENCING_FILES_LIST -ne "") {
+              $referencingFilesArray = $env:REFERENCING_FILES_LIST.Split(',')
+            }
+            Write-Host "Referencing files: $referencingFilesArray"
+            $pathArray = $env:ALL_CHANGED_FILES.Split(',')
+            Write-Host "Changed files: $pathArray"
+
+            $pathArray += $referencingFilesArray
+            Write-host "Combined array: $pathArray"
+            $pathArray = $pathArray | Sort-Object -Unique
+            Write-host "Unique array: $pathArray"
+
+            if ($pathArray.Length -gt 0) {
+              Write-Host "Processing SCAD files: $pathArray"
+              ./.github/workflows/scripts/scad/Scad-Import-Processor.ps1 -pathArray $pathArray
+            } else {
+              Write-Host "No SCAD files to process"
+            }
+
+      # Commit the changes
+      - name: Commit changes
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          git config --global user.name "ScadProcessor"
+          git config --global user.email "scadprocessor@ScadAutomation.com"
+          git add .
+          git commit -m "Auto-Generated SCAD files"
+          git push
+
+      # Upload the /underware folder as an artifact. Run only if process-scad has run
+      - name: Upload Scad Output folder
+        uses: actions/upload-artifact@v4
+        if: steps.process-scad.outcome == 'success'
+        with:
+          name: scad-artifacts
+          path: output

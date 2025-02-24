@@ -1,4 +1,4 @@
-/*Created by Andy Levesque
+/*Created by Andy (BlackjackDuck)
 
 This code is licensed Creative Commons 4.0 Attribution Non-Commercial Sharable with Attribution
 References to Multipoint are for the Multiboard ecosystem by Jonathan at Keep Making. The Multipoint mount system is licensed under https://www.multiboard.io/license.
@@ -34,10 +34,11 @@ Notes:
 
 include <BOSL2/std.scad>
 include <BOSL2/walls.scad>
+include <../lib/mounting_backers.scad>
 
 /* [Beta Feature - Slot Type] */
 //Multipoint in Beta - Please share feedback! How do you intend to mount the item holder to a surface such as Multipoint connections or DavidD's Multiconnect?
-Connection_Type = "GOEWS"; // [Multipoint, Multiconnect, GOEWS]
+Connection_Type = "Multiconnect"; // [Multipoint, Multiconnect, GOEWS]
 
 /* [Internal Dimensions] */
 //Height (in mm) from the top of the back to the base of the internal floor
@@ -143,8 +144,6 @@ if(debugCutoutTool){
     else multiPointSlotTool(totalHeight);
 }
 
-onRampEveryXSlots = On_Ramp_Every_X_Slots;
-
 //Calculated
 totalHeight = internalHeight+baseThickness;
 totalDepth = internalDepth + wallThickness;
@@ -158,32 +157,16 @@ union(){
     translate(v = [-internalWidth/2,0,0]) 
         basket();
         //slotted back
-    if(Connection_Type == "Multipoint"){
     translate([-max(totalWidth,distanceBetweenSlots)/2,0.01,-baseThickness])
         makebackPlate(
             backWidth = totalWidth, 
             backHeight = totalHeight, 
             distanceBetweenSlots = distanceBetweenSlots,
-            backThickness=4.8);
-    }
-    if(Connection_Type == "Multiconnect"){
-        translate([-max(totalWidth,distanceBetweenSlots)/2,0.01,-baseThickness])
-        makebackPlate(
-            backWidth = totalWidth, 
-            backHeight = totalHeight, 
-            distanceBetweenSlots = distanceBetweenSlots,
-            backThickness=6.5);
-    }
-    if(Connection_Type == "GOEWS"){
-        translate([-max(totalWidth,distanceBetweenSlots)/2,0.01,-baseThickness])
-        makebackPlate(
-            backWidth = totalWidth, 
-            backHeight = totalHeight, 
-            distanceBetweenSlots = 42,
-            backThickness=7
+            onRampEveryXSlots = On_Ramp_Every_X_Slots,
+            Connection_Type = Connection_Type
         );
     }
-}
+
 
 //Create Basket
 module basket() {
@@ -229,7 +212,7 @@ module basket() {
     
 }
 
-
+/*
 //BEGIN MODULES
 //Slotted back Module
 module makebackPlate(backWidth, backHeight, distanceBetweenSlots, backThickness, slotStopFromBack = 13)
@@ -290,7 +273,9 @@ module makebackPlate(backWidth, backHeight, distanceBetweenSlots, backThickness,
         }
     }   
 }
+*/
 
+/*
 //Create GOEWS cleats
 module GOEWSCleatTool(totalHeight) {
     difference() {
@@ -314,7 +299,9 @@ module GOEWSCleatTool(totalHeight) {
                 cylinder(h = 6, r = 9.5, $fn = 256);
     }
 }
+*/
 
+/*
 //Create Slot Tool
 module multiConnectSlotTool(totalHeight) {
     //In slotTool, added a new variable distanceOffset which is set by the option:
@@ -353,7 +340,8 @@ module multiConnectSlotTool(totalHeight) {
                     polygon(points = [[0,0],[0,1.5],[1.5,0]]);
     }
 }
-
+*/
+/*
 module multiPointSlotTool(totalHeight) {
     slotBaseRadius = 17.0 / 2.0;  // wider width of the inner part of the channel
     slotSkinRadius = 13.75 / 2.0;  // narrower part of the channel near the skin of the model
@@ -417,7 +405,9 @@ module multiPointSlotTool(totalHeight) {
             }
     }
 }
+*/
 
+/*
 module xSlotDimples(y, slotBaseRadius, distanceBetweenSlots, distanceOffset){
     //Multipoint dimples are truncated (on top and side) pyramids
     //this function makes one pair of them
@@ -458,3 +448,4 @@ module yMultipointSlotDimples(z, slotBaseRadius, distanceBetweenSlots, distanceO
            cube([3,3,10], center=true);
     }
 }   
+*/

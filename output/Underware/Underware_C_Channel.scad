@@ -22,7 +22,7 @@ Credit to
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
 include <BOSL2/threading.scad>
-include <lib/Underware-Shared-Profiles.scad>
+include <../lib/Underware-Shared-Profiles.scad>
 
 /*[Choose Part]*/
 Base_Top_or_Both = "Both"; // [Base, Top, Both]
